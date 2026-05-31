@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -272,6 +273,31 @@
   }
   .empty-state p { margin-top: 0.5rem; font-size: 12px; }
 
+
+  /* ── Google Auth ── */
+  .g-signin-overlay {
+    position:fixed;inset:0;background:rgba(20,18,14,0.75);z-index:9999;
+    display:flex;align-items:center;justify-content:center;
+    backdrop-filter:blur(6px);
+  }
+  .g-signin-box {
+    background:var(--surface);border-radius:20px;padding:2.5rem 2rem;
+    max-width:340px;width:90%;text-align:center;
+    box-shadow:0 8px 40px rgba(0,0,0,0.2);
+  }
+  .g-signin-box h2 { font-family:'DM Serif Display',serif;font-size:1.6rem;font-weight:400;margin-bottom:.5rem; }
+  .g-signin-box p  { font-size:13px;color:var(--muted);margin-bottom:1.5rem;line-height:1.6; }
+  .g-user-chip {
+    display:flex;align-items:center;gap:8px;
+    background:rgba(255,255,255,0.15);border-radius:20px;
+    padding:4px 12px 4px 4px;cursor:pointer;transition:background .15s;font-size:13px;color:#fff;
+  }
+  .g-user-chip:hover { background:rgba(255,255,255,0.25); }
+  .g-user-avatar { width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.3); }
+  .g-drive-pill {
+    font-size:11px;font-family:'DM Mono',monospace;
+    padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.12);color:#fff;opacity:.8;
+  }
   .hidden { display: none !important; }
 
   /* Formato hint */
@@ -374,6 +400,25 @@
 
   /* Budget Objetivos */
   .budget-section { margin-bottom: 1rem; }
+  /* Pilares */
+  .pilar-card { border-radius:10px; padding:1rem; }
+  .pilar-card .pilar-emoji { font-size:1.6rem; margin-bottom:0.3rem; display:block; }
+  .pilar-card .pilar-nome { font-size:12px; font-weight:700; color:var(--text); text-transform:uppercase; letter-spacing:.05em; margin-bottom:0.1rem; }
+  .pilar-card .pilar-total { font-size:1.4rem; font-weight:800; color:var(--text); }
+  .pilar-card .pilar-sub { font-size:11px; color:var(--muted); margin-bottom:0.4rem; font-family:'DM Mono',monospace; }
+  .pilar-card .pilar-limite-row { display:flex; align-items:center; gap:6px; margin-bottom:0.4rem; flex-wrap:wrap; }
+  .pilar-card .pilar-limite-label { font-size:11px; color:var(--muted); }
+  .pilar-card .pilar-limite-input { width:80px; padding:3px 7px; border:1px solid var(--border); border-radius:6px; font-size:12px; font-family:'DM Mono',monospace; background:var(--surface); color:var(--text); }
+  .pilar-card .pilar-bar-bg { height:5px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:0.3rem; }
+  .pilar-card .pilar-bar-fill { height:100%; border-radius:3px; transition:width 0.4s ease; }
+  .pilar-card .pilar-restante { font-size:11px; font-family:'DM Mono',monospace; }
+  .pilar-config-col { background:var(--surface2); border-radius:8px; padding:0.75rem; }
+  .pilar-config-col .pcol-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; margin-bottom:0.5rem; display:flex; align-items:center; gap:5px; }
+  .pilar-cat-chip { display:inline-flex; align-items:center; gap:3px; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:500; cursor:pointer; margin:3px; border:1.5px solid transparent; transition:opacity 0.15s; }
+  .pilar-cat-chip:hover { opacity:0.7; }
+  .pilar-cat-chip.unassigned { background:var(--surface); border-color:var(--border); color:var(--muted); }
+  .pilares-mes-chip { padding:4px 12px; border-radius:20px; font-size:11px; font-weight:500; cursor:pointer; border:1.5px solid var(--border); background:var(--surface2); color:var(--muted); transition:all 0.15s; }
+  .pilares-mes-chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
   .budget-strategy-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
   .budget-strategy-tab {
     padding: 5px 14px;
@@ -481,9 +526,28 @@
 </head>
 <body>
 
+<!-- Google Sign-In overlay -->
+<div class="g-signin-overlay" id="gSigninOverlay">
+  <div class="g-signin-box">
+    <div style="font-size:2.8rem;margin-bottom:1rem;">💳</div>
+    <h2>Dashboard Financeiro</h2>
+    <p>Entra com a tua conta Google para guardares os teus dados em segurança no Google Drive.</p>
+    <div id="gSigninBtn" style="display:flex;justify-content:center;"></div>
+    <p style="font-size:11px;color:var(--muted);margin-top:1.2rem;opacity:.6;">Os teus dados ficam privados no teu Google Drive.</p>
+  </div>
+</div>
+
 <header>
   <h1>💳 Dashboard Financeiro</h1>
-  <span id="savedPill" class="hidden">dados guardados</span>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span id="savedPill" class="hidden" style="font-size:11px;opacity:.7;font-family:'DM Mono',monospace;">dados guardados</span>
+    <span id="drivePill" class="hidden g-drive-pill"></span>
+    <div id="gUserChip" class="g-user-chip hidden" onclick="gSignOut()">
+      <img id="gUserAvatar" class="g-user-avatar" src="" alt=""/>
+      <span id="gUserName"></span>
+      <span style="opacity:.45;font-size:11px;margin-left:2px;">· sair</span>
+    </div>
+  </div>
 </header>
 
 <div class="container">
@@ -491,6 +555,10 @@
   <!-- Upload -->
   <div class="upload-card">
     <p class="upload-label">Carregar extratos bancários</p>
+    <!-- Aviso sem sessão Google -->
+    <div id="noSessionWarning" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;display:flex;align-items:center;gap:8px;">
+      ⚠️ <span>Para guardar automaticamente na tua conta Google, <strong>faz login primeiro</strong> antes de carregar o extrato.</span>
+    </div>
     <div class="upload-row">
       <div class="drop-area" id="dropZone">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
@@ -524,26 +592,20 @@
     </div>
   </div>
 
-  <!-- KPIs -->
-  <div class="kpi-grid" id="kpiSection">
-    <div class="kpi"><p class="kpi-label">Total entradas</p><p class="kpi-val pos" id="kpiEnt">—</p><p class="kpi-sub" id="kpiEntN">—</p></div>
-    <div class="kpi"><p class="kpi-label">Total saídas</p><p class="kpi-val neg" id="kpiSai">—</p><p class="kpi-sub" id="kpiSaiN">—</p></div>
-  </div>
-
-  <!-- Charts -->
-  <div class="charts-grid">
-    <div class="card">
-      <p class="card-title">Despesas por categoria</p>
-      <div class="chart-wrap"><canvas id="chartDona"></canvas></div>
-      <div class="legend" id="legendDona"></div>
+  <!-- Pilares Financeiros -->
+  <div class="card" id="pilaresCard" style="margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+      <p class="card-title" style="margin-bottom:0;">Pilares financeiros</p>
+      <button class="btn" onclick="togglePilaresConfig()" id="pilaresConfigBtn" style="font-size:11px;padding:5px 12px;">⚙️ Configurar</button>
     </div>
-    <div class="card">
-      <p class="card-title">Entradas vs Saídas</p>
-      <div class="chart-wrap"><canvas id="chartBar"></canvas></div>
-      <div class="legend">
-        <span><span class="legend-dot" style="background:#1D9E75"></span>Entradas</span>
-        <span><span class="legend-dot" style="background:#D85A30"></span>Saídas</span>
-      </div>
+    <!-- Filtro de mês nos pilares -->
+    <div id="pilaresMesChips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1rem;"></div>
+    <!-- Cards dos pilares -->
+    <div id="pilaresCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:0.5rem;"></div>
+    <!-- Painel de config -->
+    <div id="pilaresConfig" class="hidden" style="border-top:1px solid var(--border);padding-top:1rem;margin-top:0.5rem;">
+      <p style="font-size:11px;color:var(--muted);margin-bottom:0.8rem;">Clica numa categoria para a atribuir a um pilar. As que estão num pilar têm × para remover.</p>
+      <div id="pilaresConfigGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem;"></div>
     </div>
   </div>
 
@@ -567,66 +629,6 @@
           <tbody id="resumoEntBody"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;font-size:12px;">Sem dados</td></tr></tbody>
         </table>
       </div>
-    </div>
-  </div>
-
-  <!-- Budget Objetivos -->
-  <div class="card budget-section" id="budgetCard" style="margin-bottom:1rem;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
-      <p class="card-title" style="margin-bottom:0;">🎯 Objetivos de budget</p>
-      <button class="btn" onclick="toggleBudget()" id="budgetToggleBtn">Mostrar objetivos</button>
-    </div>
-    <div id="budgetPainel" class="hidden">
-
-      <!-- Rendimento de referência -->
-      <div class="budget-rendimento-wrap">
-        <span class="budget-rendimento-label">Rendimento mensal de referência</span>
-        <div class="budget-input-wrap">
-          <input type="number" id="budgetRendimento" class="budget-input" style="width:110px;" placeholder="0" min="0" step="50"
-            oninput="onBudgetRendimentoChange()" onchange="saveBudget()"/>
-          <span class="budget-input-sym">€ / mês</span>
-        </div>
-        <span class="budget-rendimento-note" id="budgetRendimentoAuto">ou usa as entradas do período</span>
-        <button class="btn" style="font-size:12px;padding:6px 12px;" onclick="usarEntradasComoRendimento()">Usar entradas</button>
-      </div>
-
-      <!-- Estratégias pré-definidas -->
-      <p style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:0.5rem;">Estratégia de distribuição</p>
-      <div class="budget-strategy-tabs" id="budgetStrategyTabs">
-        <button class="budget-strategy-tab active" data-strategy="custom" onclick="applyStrategy('custom')">Personalizado</button>
-        <button class="budget-strategy-tab" data-strategy="503020" onclick="applyStrategy('503020')" title="50% Necessidades · 30% Desejos · 20% Poupança">50/30/20</button>
-        <button class="budget-strategy-tab" data-strategy="602020" onclick="applyStrategy('602020')" title="60% Necessidades · 20% Desejos · 20% Poupança">60/20/20</button>
-        <button class="budget-strategy-tab" data-strategy="702010" onclick="applyStrategy('702010')" title="70% Necessidades · 20% Desejos · 10% Poupança">70/20/10</button>
-        <button class="budget-strategy-tab" data-strategy="zero" onclick="applyStrategy('zero')" title="Cada euro tem destino definido">Base zero</button>
-      </div>
-      <div id="budgetStrategyDesc" style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:1rem;padding:8px 12px;background:var(--surface2);border-radius:8px;"></div>
-
-      <!-- Visão geral dos 3 pilares (quando estratégia ativa) -->
-      <div class="budget-overview" id="budgetOverview" style="display:none;">
-        <div class="budget-overview-item">
-          <p class="budget-overview-label">Necessidades</p>
-          <p class="budget-overview-val" id="ovNecessidades">—</p>
-          <p class="budget-overview-sub" id="ovNecessidadesPct">—</p>
-        </div>
-        <div class="budget-overview-item">
-          <p class="budget-overview-label">Desejos / Lazer</p>
-          <p class="budget-overview-val" id="ovDesejos">—</p>
-          <p class="budget-overview-sub" id="ovDesejosPct">—</p>
-        </div>
-        <div class="budget-overview-item">
-          <p class="budget-overview-label">Poupança / Investimento</p>
-          <p class="budget-overview-val" id="ovPoupanca">—</p>
-          <p class="budget-overview-sub" id="ovPoupancaPct">—</p>
-        </div>
-      </div>
-
-      <!-- Grid de categorias com limites -->
-      <p style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:0.5rem;">Limite mensal por categoria</p>
-      <div class="budget-cats-grid" id="budgetCatsGrid"></div>
-
-      <p style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">
-        💡 Os limites são guardados automaticamente. As barras mostram o gasto atual vs o objetivo definido.
-      </p>
     </div>
   </div>
 
@@ -727,14 +729,19 @@ let metaInfo = {}; // saldo bancário, período, conta
 let loadedMonths = []; // [{ key, label, count }] — registo de meses carregados
 
 // ─── Categories ──────────────────────────────────────────────────────────────
-let CATS = ['Alimentação','Supermercado','Transportes','Saúde','Estética','Telecomunicações','Seguros','Habitação','Lazer','Restaurantes','Transferências','Poupança','Rendimentos','Diversos'];
+let CATS = ['Restauração','Supermercado','Transportes','Saúde','Estética','Telecomunicações','Seguros','Habitação','Lazer','Restaurantes','Transferências','Poupança','Rendimentos','Diversos'];
 let CUSTOM_CATS = []; // categorias adicionadas pelo utilizador
+let DELETED_BASE_CATS = []; // categorias base eliminadas pelo utilizador
 const CAT_COLORS = ['#1D9E75','#185FA5','#BA7517','#D4537E','#b05ec4','#533AB7','#D85A30','#8a8680','#c8440a','#e8a87c','#7ec8e3','#f0a500','#2ecc71','#95a5a6'];
 
 // ─── Regras do utilizador ─────────────────────────────────────────────────────
 let userRules = []; // [{ keyword, cat }] — por ordem, primeira que bater ganha
 
 function loadRules() {
+  // Se já há dados em memória (restaurados do Drive), não sobrescrever com localStorage
+  loadPilares();
+  if (userRules.length || CUSTOM_CATS.length) return;
+  // Fallback: tentar localStorage (só útil sem sessão Google)
   try {
     const raw = localStorage.getItem('finDash_rules');
     userRules = raw ? JSON.parse(raw) : [];
@@ -744,12 +751,19 @@ function loadRules() {
     CUSTOM_CATS = rawCats ? JSON.parse(rawCats) : [];
     CUSTOM_CATS.forEach(c => { if (!CATS.includes(c)) CATS.push(c); });
   } catch(e) { CUSTOM_CATS = []; }
+  try {
+    const rawDel = localStorage.getItem('finDash_deletedCats');
+    DELETED_BASE_CATS = rawDel ? JSON.parse(rawDel) : [];
+    CATS = CATS.filter(c => !DELETED_BASE_CATS.includes(c));
+  } catch(e) { DELETED_BASE_CATS = []; }
 }
 
 function saveRules() {
   try {
     localStorage.setItem('finDash_rules', JSON.stringify(userRules));
     localStorage.setItem('finDash_customCats', JSON.stringify(CUSTOM_CATS));
+    localStorage.setItem('finDash_deletedCats', JSON.stringify(DELETED_BASE_CATS));
+    if (typeof gAccessToken !== 'undefined' && gAccessToken) scheduleDriveSave();
     // Feedback visual
     const pill = document.getElementById('rulesSavedPill');
     if (pill) {
@@ -881,7 +895,7 @@ function renderCatChips() {
   const el = document.getElementById('catChipsList');
   if (!el) return;
   // Mostra todas as categorias com botão × para remover
-  const BASE_CATS_DEFAULT = ['Alimentação','Supermercado','Transportes','Saúde','Estética','Telecomunicações','Seguros','Habitação','Lazer','Restaurantes','Transferências','Poupança','Rendimentos','Diversos'];
+  const BASE_CATS_DEFAULT = ['Restauração','Supermercado','Transportes','Saúde','Estética','Telecomunicações','Seguros','Habitação','Lazer','Restaurantes','Transferências','Poupança','Rendimentos','Diversos'];
   el.innerHTML = CATS.map(cat => {
     const color = CAT_COLORS[CATS.indexOf(cat)] || '#888';
     const isDefault = BASE_CATS_DEFAULT.includes(cat);
@@ -907,7 +921,11 @@ function deleteCategory(cat) {
   userRules = userRules.filter(r => r.cat !== cat);
   // Remove das listas
   CATS = CATS.filter(c => c !== cat);
+  if (!CUSTOM_CATS.includes(cat)) { if (!DELETED_BASE_CATS.includes(cat)) DELETED_BASE_CATS.push(cat); }
   CUSTOM_CATS = CUSTOM_CATS.filter(c => c !== cat);
+  // Remove dos pilares
+  PILARES.forEach(p => { p.cats = p.cats.filter(c => c !== cat); });
+  savePilares();
   saveRules();
   save();
   refreshCatSelects();
@@ -934,6 +952,7 @@ function reapplyCategories() {
     // Se foi manual → nunca tocar
   });
   save();
+  if (typeof gAccessToken !== 'undefined' && gAccessToken) scheduleDriveSave();
   refresh();
 }
 
@@ -955,7 +974,7 @@ function autoCategory(desc) {
   if (/UBER|BOLT|CP |METRO|CARRIS|GASOLINA|PARQUE|TOLL|VIA VERDE/.test(d)) return 'Transportes';
   if (/TRF |TFI |MBWAY|TRANSFERENCIA|SEPA/.test(d)) return 'Transferências';
   if (/NETFLIX|SPOTIFY|AMAZON|STEAM|CINEMA|TEATRO/.test(d)) return 'Lazer';
-  if (/COMPRAS|CASA BA|AVOLTA|EASYPAY/.test(d)) return 'Alimentação';
+  if (/COMPRAS|CASA BA|AVOLTA|EASYPAY/.test(d)) return 'Restauração';
   return 'Diversos';
 }
 
@@ -1102,7 +1121,7 @@ function parseCSV(text) {
 // Normaliza categorias do banco para as nossas
 function normalizeCat(catBanco) {
   const c = catBanco.trim().toUpperCase();
-  if (c.includes('COMPRA') || c === 'COMPRAS') return 'Alimentação';
+  if (c.includes('COMPRA') || c === 'COMPRAS') return 'Restauração';
   if (c.includes('SEGURO')) return 'Seguros';
   if (c.includes('TELE') || c.includes('TV') || c.includes('INTERNET')) return 'Telecomunicações';
   if (CATS.map(x=>x.toUpperCase()).includes(c)) return CATS[CATS.map(x=>x.toUpperCase()).indexOf(c)];
@@ -1127,6 +1146,159 @@ function getFiltered() {
     data = data.filter(r => r.desc.toUpperCase().includes(q) || r.cat.toUpperCase().includes(q));
   }
   return filterByType(data, activeType);
+}
+
+// ─── Pilares ─────────────────────────────────────────────────────────────────
+let PILARES = [
+  { id: 'essenciais', nome: 'Essenciais', emoji: '🏠', color: '#185FA5', cats: [], limite: 0 },
+  { id: 'lazer',      nome: 'Lazer',      emoji: '🎉', color: '#D85A30', cats: [], limite: 0 },
+  { id: 'poupanca',   nome: 'Poupança & Investimento', emoji: '💰', color: '#1D9E75', cats: [], limite: 0 }
+];
+let activePilarMonth = 'all';
+
+function savePilares() {
+  try { localStorage.setItem('finDash_pilares', JSON.stringify(PILARES)); } catch(e) {}
+  if (typeof gAccessToken !== 'undefined' && gAccessToken) scheduleDriveSave();
+}
+
+function loadPilares() {
+  try {
+    const raw = localStorage.getItem('finDash_pilares');
+    if (raw) {
+      const saved = JSON.parse(raw);
+      saved.forEach(sp => {
+        const p = PILARES.find(x => x.id === sp.id);
+        if (p) { p.nome = sp.nome; p.cats = sp.cats || []; p.limite = sp.limite || 0; }
+      });
+    }
+  } catch(e) {}
+}
+
+function renderPilaresMesChips(data) {
+  const el = document.getElementById('pilaresMesChips');
+  if (!el) return;
+  const months = [...new Set(allData.map(r => r.date.slice(0,7)))].sort();
+  const nomeMes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  let html = `<span class="pilares-mes-chip ${activePilarMonth==='all'?'active':''}" onclick="setPilarMonth('all')">Todos</span>`;
+  months.forEach(m => {
+    const [y,mo] = m.split('-');
+    const label = nomeMes[parseInt(mo)-1]+' '+y;
+    html += `<span class="pilares-mes-chip ${activePilarMonth===m?'active':''}" onclick="setPilarMonth('${m}')">${label}</span>`;
+  });
+  el.innerHTML = html;
+}
+
+function setPilarMonth(m) {
+  activePilarMonth = m;
+  const data = activePilarMonth === 'all' ? allData : allData.filter(r => r.date.slice(0,7) === m);
+  renderPilaresMesChips(data);
+  renderPilaresCards(data);
+}
+
+function renderPilares(data) {
+  loadPilares();
+  renderPilaresMesChips(data);
+  const d = activePilarMonth === 'all' ? allData : allData.filter(r => r.date.slice(0,7) === activePilarMonth);
+  renderPilaresCards(d);
+}
+
+function renderPilaresCards(data) {
+  const saiData = data.filter(r => r.amount < 0);
+  const totalSai = saiData.reduce((s, r) => s + Math.abs(r.amount), 0);
+  // Entradas excluindo Transferências e Rendimentos para base do limite
+  const totalEnt = data.filter(r => r.amount > 0 && !['Transferências','Rendimentos'].includes(r.cat)).reduce((s, r) => s + r.amount, 0);
+  const cardsEl = document.getElementById('pilaresCards');
+  if (!cardsEl) return;
+
+  cardsEl.innerHTML = PILARES.map(p => {
+    const total = saiData.filter(r => p.cats.includes(r.cat)).reduce((s, r) => s + Math.abs(r.amount), 0);
+    const pct = totalSai > 0 ? (total / totalSai * 100).toFixed(1) : '0.0';
+    const limitePct = p.limite || 0; // percentagem das entradas
+    const limiteVal = limitePct > 0 ? (totalEnt * limitePct / 100) : 0;
+    const barPct = limitePct > 0 ? Math.min((total / limiteVal) * 100, 100).toFixed(1) : parseFloat(pct);
+    const over = limitePct > 0 && total > limiteVal;
+    const barColor = over ? '#e53e3e' : (parseFloat(barPct) > 80 ? '#d69e2e' : p.color);
+    const restante = limitePct > 0 ? (limiteVal - total) : null;
+    const entLabel = limitePct > 0 ? ` · limite ${fmtAbs(limiteVal)} (${limitePct}% de ${fmtAbs(totalEnt)})` : '';
+    const restHtml = restante !== null
+      ? `<div class="pilar-restante ${restante >= 0 ? 'pos' : 'neg'}">${restante >= 0 ? '▼ ' + fmtAbs(restante) + ' disponível' : '▲ ' + fmtAbs(Math.abs(restante)) + ' acima do limite'}</div>`
+      : `<div class="pilar-restante" style="color:var(--muted);font-style:italic;">sem limite definido</div>`;
+
+    return `<div class="pilar-card" style="background:${p.color}15;border:1.5px solid ${p.color}30;">
+      <span class="pilar-emoji">${p.emoji}</span>
+      <div class="pilar-nome">${p.nome}</div>
+      <div class="pilar-total">${fmtAbs(total)}</div>
+      <div class="pilar-sub">${pct}% das saídas${entLabel} · ${p.cats.length} categoria${p.cats.length!==1?'s':''}</div>
+      <div class="pilar-limite-row">
+        <span class="pilar-limite-label">Limite:</span>
+        <input class="pilar-limite-input" type="number" min="0" max="100" step="1" value="${limitePct||''}" placeholder="—"
+          onchange="setPilarLimite('${p.id}', this.value)" title="Percentagem do rendimento para este pilar"/>
+        <span class="pilar-limite-label">% do rendimento</span>
+      </div>
+      <div class="pilar-bar-bg"><div class="pilar-bar-fill" style="width:${barPct}%;background:${barColor};"></div></div>
+      ${restHtml}
+    </div>`;
+  }).join('');
+}
+
+function setPilarLimite(pilarId, val) {
+  const p = PILARES.find(x => x.id === pilarId);
+  if (p) { p.limite = parseFloat(val) || 0; savePilares(); }
+  const d = activePilarMonth === 'all' ? allData : allData.filter(r => r.date.slice(0,7) === activePilarMonth);
+  renderPilaresCards(d);
+}
+
+function renderPilaresConfig() {
+  const grid = document.getElementById('pilaresConfigGrid');
+  if (!grid) return;
+  const assignedCats = PILARES.flatMap(p => p.cats);
+  const CATS_NEUTRAS = ['Transferências', 'Rendimentos', 'Diversos'];
+  const unassigned = CATS.filter(c => !assignedCats.includes(c) && !CATS_NEUTRAS.includes(c));
+  const cols = [
+    ...PILARES.map(p => ({ id: p.id, title: `${p.emoji} ${p.nome}`, color: p.color, cats: p.cats, isPilar: true })),
+    { id: 'outros', title: '⬜ Sem pilar', color: '#8a8680', cats: unassigned, isPilar: false }
+  ];
+  grid.innerHTML = cols.map(col => `
+    <div class="pilar-config-col">
+      <div class="pcol-title" style="color:${col.color};">${col.title}</div>
+      <div>${col.cats.map(cat =>
+        `<span class="pilar-cat-chip ${col.isPilar?'':'unassigned'}"
+          style="${col.isPilar?`background:${col.color}20;border-color:${col.color}50;color:${col.color};`:''}"
+          onclick="moveCatPilar('${cat}','${col.id}')">${cat} ${col.isPilar?'×':'→'}</span>`
+      ).join('')}
+      ${col.cats.length===0?'<span style="font-size:11px;color:var(--muted);font-style:italic;">Nenhuma categoria</span>':''}
+      </div>
+    </div>`).join('');
+}
+
+function moveCatPilar(cat, fromId) {
+  if (fromId !== 'outros') {
+    const p = PILARES.find(x => x.id === fromId);
+    if (p) p.cats = p.cats.filter(c => c !== cat);
+    savePilares(); renderPilaresConfig();
+    const d = activePilarMonth === 'all' ? allData : allData.filter(r => r.date.slice(0,7) === activePilarMonth);
+    renderPilaresCards(d); return;
+  }
+  const opts = PILARES.map((p,i) => `${i+1}: ${p.emoji} ${p.nome}`).join('\n');
+  const choice = prompt(`Para qual pilar mover «${cat}»?\n\n${opts}\n\nEscreve o número:`);
+  if (!choice) return;
+  const idx = parseInt(choice)-1;
+  if (isNaN(idx)||idx<0||idx>=PILARES.length) { alert('Número inválido.'); return; }
+  PILARES.forEach(p => { p.cats = p.cats.filter(c => c !== cat); });
+  PILARES[idx].cats.push(cat);
+  savePilares(); renderPilaresConfig();
+  const d = activePilarMonth === 'all' ? allData : allData.filter(r => r.date.slice(0,7) === activePilarMonth);
+  renderPilaresCards(d);
+}
+
+function togglePilaresConfig() {
+  const cfg = document.getElementById('pilaresConfig');
+  const btn = document.getElementById('pilaresConfigBtn');
+  if (cfg.classList.contains('hidden')) {
+    cfg.classList.remove('hidden'); btn.textContent = '✕ Fechar'; renderPilaresConfig();
+  } else {
+    cfg.classList.add('hidden'); btn.textContent = '⚙️ Configurar';
+  }
 }
 
 // ─── Render KPIs ─────────────────────────────────────────────────────────────
@@ -1337,37 +1509,37 @@ function renderTable(data) {
 
 function changecat(sel, idx) {
   allData[idx].cat = sel.value;
-  allData[idx].manual = true; // preservar contra reapplyCategories
+  allData[idx].manual = true;
   save();
+  if (gAccessToken) scheduleDriveSave();
   const f = getFiltered();
-  renderKPIs(f);
-  renderCharts(f);
+  renderPilares(f);
   renderResumo(f);
 }
 
 function refresh() {
   const f = getFiltered();
   renderMonthFilterChips();
-  renderKPIs(f);
-  renderCharts(f);
+  renderPilares(f);
   renderResumo(f);
   renderTable(f);
-  // Atualiza budget se o painel estiver visível
-  if (!document.getElementById('budgetPainel').classList.contains('hidden')) {
-    renderBudgetCats();
-    updateBudgetOverview();
-  }
+
 }
 
 // ─── Persist ──────────────────────────────────────────────────────────────────
 function save() {
+  // localStorage é apenas cache local — a fonte da verdade é o Drive
   try {
-    localStorage.setItem('finDash_v3', JSON.stringify({ data: allData, meta: metaInfo, months: loadedMonths }));
-    document.getElementById('savedPill').classList.remove('hidden');
+    localStorage.setItem('finDash_v3', JSON.stringify({ data: allData, meta: metaInfo, months: loadedMonths, rules: userRules, customCats: CUSTOM_CATS, deletedCats: DELETED_BASE_CATS, pilares: PILARES }));
   } catch(e) {}
+  // Pill só aparece se há dados em memória (não depende do localStorage)
+  if (allData.length || userRules.length) {
+    document.getElementById('savedPill').classList.remove('hidden');
+  }
 }
 
 function load() {
+  // Só usado como fallback quando não há sessão Google activa
   try {
     const raw = localStorage.getItem('finDash_v3');
     if (raw) {
@@ -1375,6 +1547,10 @@ function load() {
       allData = parsed.data || [];
       metaInfo = parsed.meta || {};
       loadedMonths = parsed.months || [];
+      if (parsed.rules) userRules = parsed.rules;
+      if (parsed.customCats) { CUSTOM_CATS = parsed.customCats; CUSTOM_CATS.forEach(c => { if (!CATS.includes(c)) CATS.push(c); }); }
+      if (parsed.deletedCats) { DELETED_BASE_CATS = parsed.deletedCats; CATS = CATS.filter(c => !DELETED_BASE_CATS.includes(c)); }
+      if (parsed.pilares) { parsed.pilares.forEach(sp => { const pil = PILARES.find(x => x.id === sp.id); if (pil) { pil.cats = sp.cats||[]; pil.limite = sp.limite||0; } }); }
       // Se não há registo de meses (dados de versão antiga), reconstrói
       if (allData.length && !loadedMonths.length) {
         const monthSet = {};
@@ -1469,17 +1645,26 @@ document.querySelectorAll('.tab[data-t]').forEach(btn => {
 });
 
 // ─── File Upload ──────────────────────────────────────────────────────────────
-function handleFile(file) {
+function handleFile(file, isLast, onDone) {
   const reader = new FileReader();
   reader.onload = ev => {
     const { rows, isBankFormat } = parseCSV(ev.target.result);
     if (rows.length === 0) {
       alert('Não foi possível ler o ficheiro.\n\nVerifica se é um extrato CSV exportado pelo banco.\nFormato esperado:\nData mov. ; Descrição ; Débito ; Crédito ; ...');
+      if (onDone) onDone();
       return;
     }
 
     // Detecta os meses contidos neste ficheiro
     const monthsInFile = [...new Set(rows.map(r => r.date.slice(0, 7)))].sort();
+
+    // Guarda edições manuais dos meses que vão ser substituídos
+    const manualEdits = {};
+    monthsInFile.forEach(m => {
+      allData
+        .filter(r => r.date.slice(0, 7) === m && r.manual)
+        .forEach(r => { manualEdits[r.date + '|' + r.desc + '|' + r.amount] = r.cat; });
+    });
 
     // Remove dados duplicados do mesmo mês (re-upload substitui o mês)
     const removedMonths = [];
@@ -1487,8 +1672,16 @@ function handleFile(file) {
       const before = allData.length;
       allData = allData.filter(r => r.date.slice(0, 7) !== m);
       if (allData.length < before) removedMonths.push(m);
-      // Remove do registo de meses
       loadedMonths = loadedMonths.filter(lm => lm.key !== m);
+    });
+
+    // Reaplicar edições manuais aos novos movimentos
+    rows.forEach(r => {
+      const key = r.date + '|' + r.desc + '|' + r.amount;
+      if (manualEdits[key] !== undefined) {
+        r.cat = manualEdits[key];
+        r.manual = true;
+      }
     });
 
     // Acumula os novos dados
@@ -1504,8 +1697,15 @@ function handleFile(file) {
     loadedMonths.sort((a, b) => a.key.localeCompare(b.key));
 
     save();
+    // Guardar no Drive imediatamente após o último ficheiro
+    if (isLast && typeof gAccessToken !== "undefined" && gAccessToken) {
+      driveSave();
+    } else if (typeof gAccessToken !== "undefined" && gAccessToken) {
+      scheduleDriveSave();
+    }
     updateMonthsUI();
     showDash(allData.length + ' movimentos no total', monthsInFile.length + ' mês(es) adicionado(s)', isBankFormat);
+    if (onDone) onDone();
   };
   reader.readAsText(file, 'windows-1252');
 }
@@ -1513,10 +1713,18 @@ function handleFile(file) {
 document.getElementById('fileInput').addEventListener('change', e => {
   const files = Array.from(e.target.files);
   if (!files.length) return;
-  // Processa ficheiros sequencialmente
+  if (!gAccessToken) {
+    if (!confirm('⚠️ Não estás com sessão iniciada.\n\nSem login, os dados NÃO ficam guardados na tua conta Google — perdes-os ao fechar o separador.\n\nQueres continuar mesmo assim?')) {
+      e.target.value = '';
+      return;
+    }
+  }
+  // Processa ficheiros sequencialmente, guarda no Drive após o último
   let i = 0;
   function next() {
-    if (i < files.length) { handleFile(files[i++]); setTimeout(next, 200); }
+    if (i < files.length) {
+      handleFile(files[i++], i === files.length, next);
+    }
   }
   next();
   e.target.value = '';
@@ -1527,8 +1735,11 @@ dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor 
 dz.addEventListener('dragleave', () => { dz.style.borderColor = ''; });
 dz.addEventListener('drop', e => {
   e.preventDefault(); dz.style.borderColor = '';
+  if (!gAccessToken) {
+    if (!confirm('⚠️ Não estás com sessão iniciada.\n\nSem login, os dados NÃO ficam guardados na tua conta Google — perdes-os ao fechar o separador.\n\nQueres continuar mesmo assim?')) return;
+  }
   const files = Array.from(e.dataTransfer.files).filter(f => f.name.match(/\.(csv|txt)$/i));
-  files.forEach(f => handleFile(f));
+  files.forEach((f, idx) => handleFile(f, idx === files.length - 1));
 });
 dz.addEventListener('click', () => document.getElementById('fileInput').click());
 
@@ -1595,7 +1806,6 @@ function doReset() {
   document.getElementById('monthsChips').innerHTML = '';
   const mfc = document.getElementById('monthFilterChips'); if (mfc) mfc.innerHTML = '';
   document.getElementById('movBody').innerHTML = '<tr><td colspan="4"><div class="empty-state">Sem dados<p>Carrega um extrato CSV ou usa o demo.</p></div></td></tr>';
-  ['kpiEnt','kpiSai','kpiEntN','kpiSaiN'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
   if (chartDona) { chartDona.destroy(); chartDona = null; }
   if (chartBar) { chartBar.destroy(); chartBar = null; }
   if (chartLine) { chartLine.destroy(); chartLine = null; }
@@ -1694,7 +1904,7 @@ const STRATEGIES = {
 const CAT_PILAR = {
   'Habitação': 'necessidades',
   'Supermercado': 'necessidades',
-  'Alimentação': 'necessidades',
+  'Restauração': 'necessidades',
   'Saúde': 'necessidades',
   'Telecomunicações': 'necessidades',
   'Seguros': 'necessidades',
@@ -1708,11 +1918,11 @@ const CAT_PILAR = {
   'Diversos': 'desejos',
 };
 
-function loadBudget() {
+function loadBudget(fromObj) {
+  // fromObj: vem do Drive (já em memória); senão tenta localStorage como fallback
   try {
-    const raw = localStorage.getItem('finDash_budget');
-    if (raw) {
-      const b = JSON.parse(raw);
+    const b = fromObj || JSON.parse(localStorage.getItem('finDash_budget') || 'null');
+    if (b) {
       budgetLimits = b.limits || {};
       budgetRendimento = b.rendimento || 0;
       activeStrategy = b.strategy || 'custom';
@@ -1725,14 +1935,12 @@ function loadBudget() {
 function saveBudget() {
   try {
     budgetRendimento = parseFloat(document.getElementById('budgetRendimento').value) || 0;
-    localStorage.setItem('finDash_budget', JSON.stringify({
-      limits: budgetLimits,
-      rendimento: budgetRendimento,
-      strategy: activeStrategy
-    }));
+    const obj = { limits: budgetLimits, rendimento: budgetRendimento, strategy: activeStrategy };
+    try { localStorage.setItem('finDash_budget', JSON.stringify(obj)); } catch(e) {}
   } catch(e) {}
   renderBudgetCats();
   updateBudgetOverview();
+  if (typeof gAccessToken !== 'undefined' && gAccessToken) scheduleDriveSave();
 }
 
 function toggleBudget() {
@@ -1911,12 +2119,273 @@ function getFilteredData() {
   return data;
 }
 
+// ─── Google Auth + Drive ─────────────────────────────────────────────────────
+const G_CLIENT_ID = '452856356047-sk5t1c6dpggssftgcm1sqrdrvd0fhiuq.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_FILE  = 'dashboard-financeiro-backup.json';
+
+let gAccessToken = null;
+let gDriveFileId = null;
+let gSaveTimer   = null;
+
+function initGoogleAuth() {
+  // 1. Verificar se voltou do redirect OAuth com token novo
+  if (handleOAuthCallback()) return;
+
+  // 2. Tentar restaurar sessão guardada no sessionStorage (sobrevive a novos separadores na mesma sessão)
+  try {
+    const saved = sessionStorage.getItem('gSession');
+    if (saved) {
+      const sess = JSON.parse(saved);
+      // Verificar se o token ainda é válido (expira em 1h, guardamos o timestamp)
+      if (sess.token && sess.savedAt && (Date.now() - sess.savedAt) < 55 * 60 * 1000) {
+        gAccessToken = sess.token;
+        document.getElementById('gSigninOverlay').style.display = 'none';
+        const chip = document.getElementById('gUserChip');
+        chip.classList.remove('hidden');
+        document.getElementById('gUserAvatar').src = sess.picture || '';
+        document.getElementById('gUserName').textContent = (sess.name || 'Utilizador').split(' ')[0];
+        updateSessionUI();
+        loadRules(); refreshCatSelects(); renderRulesList(); loadBudget(); driveLoad();
+        console.log('Sessão restaurada do sessionStorage');
+        return;
+      } else {
+        sessionStorage.removeItem('gSession');
+      }
+    }
+  } catch(e) {}
+
+  // 3. Mostrar botão de login — sem sessão, mostrar aviso no upload
+  updateSessionUI();
+  const btn = document.getElementById('gSigninBtn');
+  btn.innerHTML = `<button onclick="startGoogleLogin()" style="display:flex;align-items:center;gap:10px;padding:11px 22px;border:1.5px solid #dadce0;border-radius:6px;background:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;color:#3c4043;box-shadow:0 1px 3px rgba(0,0,0,.08);">
+    <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+    Entrar com Google
+  </button>`;
+}
+
+function startGoogleLogin() {
+  const redirect = 'https://dashboard-financeiro-rlc.netlify.app';
+  const url = 'https://accounts.google.com/o/oauth2/v2/auth' +
+    '?client_id=' + encodeURIComponent(G_CLIENT_ID) +
+    '&redirect_uri=' + encodeURIComponent(redirect) +
+    '&response_type=token' +
+    '&scope=' + encodeURIComponent('https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email') +
+    '&prompt=consent';
+  window.location.href = url;
+}
+
+function handleOAuthCallback() {
+  const hash = window.location.hash;
+  if (!hash.includes('access_token')) return false;
+  const params = new URLSearchParams(hash.replace('#', ''));
+  const token = params.get('access_token');
+  if (!token) return false;
+  // Limpar hash do URL
+  history.replaceState(null, '', window.location.pathname);
+
+  // Verificar código de acesso
+  const code = prompt('Código de acesso:');
+  if (!code || code.trim() !== '3991Fd') {
+    alert('Código incorreto. Acesso negado.');
+    return true;
+  }
+
+  // Buscar perfil e entrar
+  fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+    headers: { Authorization: 'Bearer ' + token }
+  }).then(r => r.json()).then(profile => {
+    gAccessToken = token;
+    // Guardar sessão no sessionStorage para sobreviver a novos separadores
+    try {
+      sessionStorage.setItem('gSession', JSON.stringify({
+        token, savedAt: Date.now(),
+        picture: profile.picture || '',
+        name: profile.name || 'Utilizador'
+      }));
+    } catch(e) {}
+    document.getElementById('gSigninOverlay').style.display = 'none';
+    const chip = document.getElementById('gUserChip');
+    chip.classList.remove('hidden');
+    document.getElementById('gUserAvatar').src = profile.picture || '';
+    document.getElementById('gUserName').textContent = (profile.name || 'Utilizador').split(' ')[0];
+    updateSessionUI();
+    loadRules();
+    refreshCatSelects();
+    renderRulesList();
+    loadBudget();
+    driveLoad();
+  }).catch(() => {
+    gAccessToken = token;
+    try { sessionStorage.setItem('gSession', JSON.stringify({ token, savedAt: Date.now(), name: 'Utilizador', picture: '' })); } catch(e) {}
+    document.getElementById('gSigninOverlay').style.display = 'none';
+    document.getElementById('gUserChip').classList.remove('hidden');
+    document.getElementById('gUserName').textContent = 'Utilizador';
+    updateSessionUI();
+    loadRules(); refreshCatSelects(); renderRulesList(); loadBudget(); driveLoad();
+  });
+  return true;
+}
+
+function onGoogleSignIn(credentialResponse) {
+  // não usado - usamos redirect flow
+}
+
+function updateSessionUI() {
+  const warn = document.getElementById('noSessionWarning');
+  if (warn) warn.style.display = gAccessToken ? 'none' : 'flex';
+}
+
+function gSignOut() {
+  if (!confirm('Tens a certeza que queres sair?')) return;
+  try { sessionStorage.removeItem('gSession'); } catch(e) {}
+  gAccessToken = null; gDriveFileId = null;
+  updateSessionUI();
+  document.getElementById('gUserChip').classList.add('hidden');
+  document.getElementById('gSigninOverlay').style.display = '';
+  setDrivePill('');
+  doReset();
+}
+
+// ─── Drive helpers ────────────────────────────────────────────────────────────
+function setDrivePill(msg, color) {
+  const el = document.getElementById('drivePill');
+  if (!msg) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.textContent = msg;
+  el.style.color = color || '#fff';
+}
+
+function buildPayload() {
+  return {
+    version: 'finDash_v1',
+    savedAt: new Date().toISOString(),
+    data: allData, meta: metaInfo, months: loadedMonths,
+    rules: userRules, customCats: CUSTOM_CATS, deletedCats: DELETED_BASE_CATS, pilares: PILARES,
+    budget: { limits: budgetLimits, rendimento: budgetRendimento, strategy: activeStrategy }
+  };
+}
+
+function restorePayload(p) {
+  if (!p || !p.data) return;
+  allData = p.data || []; metaInfo = p.meta || {};
+  loadedMonths = p.months || []; userRules = p.rules || [];
+  CUSTOM_CATS = p.customCats || [];
+  CUSTOM_CATS.forEach(c => { if (!CATS.includes(c)) CATS.push(c); });
+  if (p.deletedCats) { DELETED_BASE_CATS = p.deletedCats; CATS = CATS.filter(c => !DELETED_BASE_CATS.includes(c)); }
+  if (p.pilares) { p.pilares.forEach(sp => { const pil = PILARES.find(x => x.id === sp.id); if (pil) { pil.cats = sp.cats||[]; pil.limite = sp.limite||0; } }); }
+  saveRules();
+  if (p.budget) { loadBudget(p.budget); }
+  else { loadBudget(); }
+  allData.forEach(r => { if (!r.manual) r.cat = autoCategory(r.desc); });
+  save();
+  refreshCatSelects(); renderRulesList(); updateMonthsUI();
+  if (allData.length) showDash(allData.length + ' movimentos carregados', '', false);
+}
+
+async function driveLoad() {
+  if (!gAccessToken) { load(); return; } // sem sessão: usa localStorage como fallback
+  setDrivePill('⟳ a carregar…');
+  try {
+    const r = await fetch(
+      `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27${DRIVE_FILE}%27&fields=files(id,modifiedTime)`,
+      { headers: { Authorization: `Bearer ${gAccessToken}` } }
+    );
+    if (!r.ok) throw new Error('Drive list failed: ' + r.status);
+    const d = await r.json();
+    const files = d.files || [];
+    if (!files.length) {
+      // Conta nova/limpa no Drive — começa vazia, não carregar do localStorage
+      console.log('Drive: sem ficheiro guardado para esta conta. A começar vazio.');
+      setDrivePill('☁ conta nova', '#aaa');
+      setTimeout(() => setDrivePill(''), 3000);
+      return;
+    }
+    gDriveFileId = files[0].id;
+    console.log('Drive: ficheiro encontrado, modificado em', files[0].modifiedTime);
+    const r2 = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${gDriveFileId}?alt=media`,
+      { headers: { Authorization: `Bearer ${gAccessToken}` } }
+    );
+    if (!r2.ok) throw new Error('Drive read failed: ' + r2.status);
+    const payload = await r2.json();
+    console.log('Drive: payload carregado, movimentos:', payload?.data?.length, 'regras:', payload?.rules?.length);
+    restorePayload(payload);
+    setDrivePill('✓ sincronizado');
+    setTimeout(() => setDrivePill(''), 3000);
+  } catch(e) {
+    console.error('Drive load erro:', e);
+    setDrivePill('⚠ erro ao carregar', '#ffaa44');
+    // Em caso de erro de rede, tenta localStorage como último recurso
+    if (!allData.length) load();
+  }
+}
+
+async function driveSave() {
+  if (!gAccessToken) { save(); return; }
+  setDrivePill('⟳ a guardar…');
+  try {
+    const payload = buildPayload();
+    console.log('Drive save: movimentos:', payload.data?.length, 'regras:', payload.rules?.length, 'manual:', payload.data?.filter(r=>r.manual).length);
+    const body = JSON.stringify(payload);
+    if (gDriveFileId) {
+      await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${gDriveFileId}?uploadType=media`,
+        { method:'PATCH', headers:{ Authorization:`Bearer ${gAccessToken}`, 'Content-Type':'application/json' }, body }
+      );
+    } else {
+      const meta = JSON.stringify({ name: DRIVE_FILE, parents: ['appDataFolder'] });
+      const form = new FormData();
+      form.append('metadata', new Blob([meta], { type:'application/json' }));
+      form.append('file', new Blob([body], { type:'application/json' }));
+      const r = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+        { method:'POST', headers:{ Authorization:`Bearer ${gAccessToken}` }, body:form }
+      );
+      gDriveFileId = (await r.json()).id;
+    }
+    save(); // cache local também
+    setDrivePill('✓ guardado');
+    setTimeout(() => setDrivePill(''), 2500);
+  } catch(e) {
+    console.error('Drive save:', e);
+    setDrivePill('⚠ erro ao guardar', '#ffaa44');
+    save();
+  }
+}
+
+function scheduleDriveSave() {
+  clearTimeout(gSaveTimer);
+  gSaveTimer = setTimeout(driveSave, 1500);
+}
+
+// ─── Backup manual (botões) ───────────────────────────────────────────────────
+function exportData() {
+  const blob = new Blob([JSON.stringify(buildPayload(),null,2)], {type:'application/json'});
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(blob),
+    download: `dashboard-backup-${new Date().toISOString().slice(0,10)}.json`
+  });
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+function importData(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const p = JSON.parse(e.target.result);
+      if (!p.version || !p.data) { alert('Ficheiro inválido.'); return; }
+      restorePayload(p);
+      if (gAccessToken) driveSave();
+    } catch(err) { alert('Erro: ' + err.message); }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
-loadRules(); // carrega regras + cats customizadas
-refreshCatSelects();
-renderRulesList();
-loadBudget();
-load();
+window.addEventListener('load', () => { setTimeout(initGoogleAuth, 400); });
 </script>
 </body>
 </html>
