@@ -2150,7 +2150,7 @@ function initGoogleAuth() {
         document.getElementById('gUserAvatar').src = sess.picture || '';
         document.getElementById('gUserName').textContent = (sess.name || 'Utilizador').split(' ')[0];
         updateSessionUI();
-        loadRules(); refreshCatSelects(); renderRulesList(); loadBudget(); driveLoad();
+        loadRules(); refreshCatSelects(); renderRulesList(); driveLoad();
         console.log('Sessão restaurada do sessionStorage');
         return;
       } else {
@@ -2288,7 +2288,7 @@ function restorePayload(p) {
   CUSTOM_CATS = p.customCats || [];
   CUSTOM_CATS.forEach(c => { if (!CATS.includes(c)) CATS.push(c); });
   if (p.deletedCats) { DELETED_BASE_CATS = p.deletedCats; CATS = CATS.filter(c => !DELETED_BASE_CATS.includes(c)); }
-  if (p.pilares) { p.pilares.forEach(sp => { const pil = PILARES.find(x => x.id === sp.id); if (pil) { pil.cats = sp.cats||[]; pil.limite = sp.limite||0; } }); }
+  if (p.pilares) { p.pilares.forEach(sp => { const pil = PILARES.find(x => x.id === sp.id); if (pil) { pil.cats = sp.cats||[]; pil.limite = sp.limite||0; if (sp.nome) pil.nome = sp.nome; } }); }
   saveRules();
   if (p.budget) { loadBudget(p.budget); }
   else { loadBudget(); }
