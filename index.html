@@ -1257,21 +1257,23 @@ function renderPilares(data) {
 function renderPilaresCards(data) {
   const saiData = data.filter(r => r.amount < 0);
   const totalSai = saiData.reduce((s, r) => s + Math.abs(r.amount), 0);
-  // Entradas excluindo Transferências e Rendimentos para base do limite
+  // Usar receitas reais do período (exclui Transferências)
   const totalEnt = data.filter(r => r.amount > 0 && !['Transferências','Rendimentos'].includes(r.cat)).reduce((s, r) => s + r.amount, 0);
+  // Se não há receitas no período filtrado, usar getRendimentoEfetivo como fallback
+  const baseRendimento = totalEnt > 0 ? totalEnt : (typeof getRendimentoEfetivo === 'function' ? getRendimentoEfetivo() : budgetRendimento);
   const cardsEl = document.getElementById('pilaresCards');
   if (!cardsEl) return;
 
   cardsEl.innerHTML = PILARES.map(p => {
     const total = saiData.filter(r => p.cats.includes(r.cat)).reduce((s, r) => s + Math.abs(r.amount), 0);
     const pct = totalSai > 0 ? (total / totalSai * 100).toFixed(1) : '0.0';
-    const limitePct = p.limite || 0; // percentagem das entradas
-    const limiteVal = limitePct > 0 ? (totalEnt * limitePct / 100) : 0;
+    const limitePct = p.limite || 0;
+    const limiteVal = limitePct > 0 ? (baseRendimento * limitePct / 100) : 0;
     const barPct = limitePct > 0 ? Math.min((total / limiteVal) * 100, 100).toFixed(1) : parseFloat(pct);
     const over = limitePct > 0 && total > limiteVal;
     const barColor = over ? '#e53e3e' : (parseFloat(barPct) > 80 ? '#d69e2e' : p.color);
     const restante = limitePct > 0 ? (limiteVal - total) : null;
-    const entLabel = limitePct > 0 ? ` · limite ${fmtAbs(limiteVal)} (${limitePct}% de ${fmtAbs(totalEnt)})` : '';
+    const entLabel = limitePct > 0 ? ` · limite ${fmtAbs(limiteVal)} (${limitePct}% de ${fmtAbs(baseRendimento)})` : '';
     const restHtml = restante !== null
       ? `<div class="pilar-restante ${restante >= 0 ? 'pos' : 'neg'}">${restante >= 0 ? '▼ ' + fmtAbs(restante) + ' disponível' : '▲ ' + fmtAbs(Math.abs(restante)) + ' acima do limite'}</div>`
       : `<div class="pilar-restante" style="color:var(--muted);font-style:italic;">sem limite definido</div>`;
