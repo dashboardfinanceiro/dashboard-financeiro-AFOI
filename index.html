@@ -1920,7 +1920,6 @@ const CAT_PILAR = {
 };
 
 function loadBudget(fromObj) {
-  // fromObj: vem do Drive (já em memória); senão tenta localStorage como fallback
   try {
     const b = fromObj || JSON.parse(localStorage.getItem('finDash_budget') || 'null');
     if (b) {
@@ -1929,8 +1928,11 @@ function loadBudget(fromObj) {
       activeStrategy = b.strategy || 'custom';
     }
   } catch(e) {}
-  if (budgetRendimento) document.getElementById('budgetRendimento').value = budgetRendimento;
-  setStrategyTab(activeStrategy);
+  try {
+    const el = document.getElementById('budgetRendimento');
+    if (el && budgetRendimento) el.value = budgetRendimento;
+  } catch(e) {}
+  try { setStrategyTab(activeStrategy); } catch(e) {}
 }
 
 function saveBudget() {
@@ -1996,11 +1998,12 @@ function applyStrategy(strategy) {
 }
 
 function setStrategyTab(strategy) {
+  activeStrategy = strategy;
   document.querySelectorAll('.budget-strategy-tab').forEach(t => {
     t.classList.toggle('active', t.dataset.strategy === strategy);
   });
   const desc = document.getElementById('budgetStrategyDesc');
-  desc.textContent = STRATEGIES[strategy]?.label || '';
+  if (desc) desc.textContent = STRATEGIES[strategy]?.label || '';
 }
 
 function updateBudgetOverview() {
