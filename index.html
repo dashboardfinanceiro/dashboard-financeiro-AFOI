@@ -1267,53 +1267,57 @@ function renderPilaresCards(data) {
       ? `<div class="pilar-restante ${restante >= 0 ? 'pos' : 'neg'}">${restante >= 0 ? '▼ ' + fmtAbs(restante) + ' disponível' : '▲ ' + fmtAbs(Math.abs(restante)) + ' acima do limite'}</div>`
       : `<div class="pilar-restante" style="color:var(--muted);font-style:italic;">sem limite definido</div>`;
 
-    // Tabela de despesas das categorias deste pilar
+    // Tabela de despesas das categorias deste pilar (separada do card)
     const catRows = p.cats.map(cat => {
       const gasto = saiData.filter(r => r.cat === cat).reduce((s, r) => s + Math.abs(r.amount), 0);
       const n = saiData.filter(r => r.cat === cat).length;
-      const color = CAT_COLORS[CATS.indexOf(cat)] || '#888';
+      const catIdx = CATS.indexOf(cat);
+      const color = (typeof CAT_COLORS !== 'undefined' && CAT_COLORS[catIdx]) ? CAT_COLORS[catIdx] : p.color;
       const barW = total > 0 ? Math.min((gasto / total) * 100, 100).toFixed(0) : 0;
-      return gasto > 0 || p.cats.includes(cat) ? `
-        <tr>
-          <td style="font-size:12px;padding:5px 0;display:flex;align-items:center;gap:6px;">
-            <span style="width:8px;height:8px;border-radius:2px;background:${color};flex-shrink:0;display:inline-block;"></span>
-            ${cat}
-          </td>
-          <td style="padding:5px 4px;width:50px;">
-            <div style="background:var(--border);border-radius:3px;height:4px;overflow:hidden;">
-              <div style="width:${barW}%;height:4px;border-radius:3px;background:${color};"></div>
-            </div>
-          </td>
-          <td style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;text-align:right;padding:5px 0;">${n}</td>
-          <td style="font-size:12px;font-family:'DM Mono',monospace;text-align:right;padding:5px 0;color:var(--red);">${gasto > 0 ? '-' + fmtAbs(gasto) : '—'}</td>
-        </tr>` : '';
+      return `<tr>
+        <td style="font-size:12px;padding:5px 0;display:flex;align-items:center;gap:6px;">
+          <span style="width:8px;height:8px;border-radius:2px;background:${color};flex-shrink:0;display:inline-block;"></span>
+          ${cat}
+        </td>
+        <td style="padding:5px 4px;width:60px;">
+          <div style="background:var(--border);border-radius:3px;height:4px;overflow:hidden;">
+            <div style="width:${barW}%;height:4px;border-radius:3px;background:${color};"></div>
+          </div>
+        </td>
+        <td style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;text-align:right;padding:5px 0;">${n}</td>
+        <td style="font-size:12px;font-family:'DM Mono',monospace;text-align:right;padding:5px 0;color:var(--red);">${gasto > 0 ? '-' + fmtAbs(gasto) : '—'}</td>
+      </tr>`;
     }).join('');
 
-    return `<div class="pilar-card" style="background:${p.color}15;border:1.5px solid ${p.color}30;">
-      <span class="pilar-emoji">${p.emoji}</span>
-      <div class="pilar-nome">${p.nome}</div>
-      <div class="pilar-total">${fmtAbs(total)}</div>
-      <div class="pilar-sub">${pct}% das saídas${entLabel}</div>
-      <div class="pilar-limite-row">
-        <span class="pilar-limite-label">Limite:</span>
-        <input class="pilar-limite-input" type="number" min="0" max="100" step="1" value="${limitePct||''}" placeholder="—"
-          onchange="setPilarLimite('${p.id}', this.value)" title="Percentagem do rendimento para este pilar"/>
-        <span class="pilar-limite-label">% do rendimento</span>
-      </div>
-      <div class="pilar-bar-bg"><div class="pilar-bar-fill" style="width:${barPct}%;background:${barColor};"></div></div>
-      ${restHtml}
-      ${p.cats.length > 0 ? `
-      <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid ${p.color}30;">
+    const tabelaHtml = p.cats.length > 0 ? `
+      <div style="background:var(--surface);border:1px solid ${p.color}30;border-radius:10px;padding:0.75rem 1rem;margin-top:0.5rem;">
         <table style="width:100%;border-collapse:collapse;">
           <thead><tr>
-            <th style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding-bottom:4px;text-align:left;">Categoria</th>
-            <th style="width:50px;"></th>
-            <th style="font-size:10px;color:var(--muted);text-align:right;padding-bottom:4px;">Movs.</th>
-            <th style="font-size:10px;color:var(--muted);text-align:right;padding-bottom:4px;">Total</th>
+            <th style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding-bottom:6px;text-align:left;font-weight:600;">Categoria</th>
+            <th style="width:60px;"></th>
+            <th style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding-bottom:6px;font-weight:600;">Movs.</th>
+            <th style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding-bottom:6px;font-weight:600;">Total</th>
           </tr></thead>
           <tbody>${catRows}</tbody>
         </table>
-      </div>` : ''}
+      </div>` : '';
+
+    return `<div style="display:flex;flex-direction:column;gap:0;">
+      <div class="pilar-card" style="background:${p.color}15;border:1.5px solid ${p.color}30;margin-bottom:0;border-radius:12px 12px ${p.cats.length>0?'0 0':'12px 12px'};">
+        <span class="pilar-emoji">${p.emoji}</span>
+        <div class="pilar-nome">${p.nome}</div>
+        <div class="pilar-total">${fmtAbs(total)}</div>
+        <div class="pilar-sub">${pct}% das saídas${entLabel}</div>
+        <div class="pilar-limite-row">
+          <span class="pilar-limite-label">Limite:</span>
+          <input class="pilar-limite-input" type="number" min="0" max="100" step="1" value="${limitePct||''}" placeholder="—"
+            onchange="setPilarLimite('${p.id}', this.value)" title="Percentagem do rendimento para este pilar"/>
+          <span class="pilar-limite-label">% do rendimento</span>
+        </div>
+        <div class="pilar-bar-bg"><div class="pilar-bar-fill" style="width:${barPct}%;background:${barColor};"></div></div>
+        ${restHtml}
+      </div>
+      ${tabelaHtml}
     </div>`;
   }).join('');
 }
