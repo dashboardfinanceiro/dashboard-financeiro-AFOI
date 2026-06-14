@@ -2077,7 +2077,7 @@ function applyStrategy(strategy) {
 
 function getRendimentoEfetivo() {
   const filtered = getFilteredData();
-  const total = filtered.filter(r => r.amount > 0 && r.cat !== 'Transferências').reduce((s, r) => s + r.amount, 0);
+  const total = filtered.filter(r => r.amount > 0).reduce((s, r) => s + r.amount, 0);
   return total > 0 ? total : budgetRendimento;
 }
 
