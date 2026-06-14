@@ -593,18 +593,6 @@
     </div>
   </div>
 
-  <!-- Resumo de entradas -->
-  <div id="resumoMesChips" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:0.6rem;"></div>
-  <div class="card" style="margin-bottom:1rem;">
-    <p class="card-title">Resumo de entradas por categoria</p>
-    <div class="table-wrap">
-      <table class="resumo-table">
-        <thead><tr><th>Categoria</th><th class="bar-cell"></th><th>Movs.</th><th>Total</th></tr></thead>
-        <tbody id="resumoEntBody"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;font-size:12px;">Sem dados</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-
   <!-- Pilares Financeiros -->
   <div class="card" id="pilaresCard" style="margin-bottom:1rem;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
@@ -613,12 +601,35 @@
     </div>
     <!-- Filtro de mês nos pilares -->
     <div id="pilaresMesChips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1rem;"></div>
-    <!-- Cards dos pilares com despesas integradas -->
-    <div id="pilaresCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-bottom:0.5rem;align-items:start;"></div>
+    <!-- Cards dos pilares -->
+    <div id="pilaresCards" style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:0.5rem;"></div>
     <!-- Painel de config -->
     <div id="pilaresConfig" class="hidden" style="border-top:1px solid var(--border);padding-top:1rem;margin-top:0.5rem;">
       <p style="font-size:11px;color:var(--muted);margin-bottom:0.8rem;">Clica numa categoria para a atribuir a um pilar. As que estão num pilar têm × para remover.</p>
       <div id="pilaresConfigGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem;"></div>
+    </div>
+  </div>
+
+  <!-- Resumo por categoria -->
+  <div id="resumoMesChips" style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:0.6rem;"></div>
+  <div class="resumo-grid">
+    <div class="card">
+      <p class="card-title">Resumo de despesas por categoria</p>
+      <div class="table-wrap">
+        <table class="resumo-table">
+          <thead><tr><th>Categoria</th><th class="bar-cell"></th><th>Movs.</th><th>Total</th></tr></thead>
+          <tbody id="resumoSaiBody"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;font-size:12px;">Sem dados</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <p class="card-title">Resumo de entradas por categoria</p>
+      <div class="table-wrap">
+        <table class="resumo-table">
+          <thead><tr><th>Categoria</th><th class="bar-cell"></th><th>Movs.</th><th>Total</th></tr></thead>
+          <tbody id="resumoEntBody"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;font-size:12px;">Sem dados</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -1243,12 +1254,20 @@ function renderPilares(data) {
   renderPilaresCards(d);
 }
 
+function toggleCatMovs(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const visible = el.style.display !== 'none';
+  el.style.display = visible ? 'none' : 'table-row';
+  // Rodar a seta
+  const arrow = el.previousElementSibling?.querySelector('.cat-arrow');
+  if (arrow) arrow.textContent = visible ? '▸' : '▾';
+}
+
 function renderPilaresCards(data) {
   const saiData = data.filter(r => r.amount < 0);
   const totalSai = saiData.reduce((s, r) => s + Math.abs(r.amount), 0);
-  // Usar receitas reais do período (exclui Transferências)
   const totalEnt = data.filter(r => r.amount > 0 && !['Transferências','Rendimentos'].includes(r.cat)).reduce((s, r) => s + r.amount, 0);
-  // Se não há receitas no período filtrado, usar getRendimentoEfetivo como fallback
   const baseRendimento = totalEnt > 0 ? totalEnt : (typeof getRendimentoEfetivo === 'function' ? getRendimentoEfetivo() : budgetRendimento);
   const cardsEl = document.getElementById('pilaresCards');
   if (!cardsEl) return;
@@ -1263,61 +1282,81 @@ function renderPilaresCards(data) {
     const barColor = over ? '#e53e3e' : (parseFloat(barPct) > 80 ? '#d69e2e' : p.color);
     const restante = limitePct > 0 ? (limiteVal - total) : null;
     const entLabel = limitePct > 0 ? ` · limite ${fmtAbs(limiteVal)} (${limitePct}% de ${fmtAbs(baseRendimento)})` : '';
-    const restHtml = restante !== null
-      ? `<div class="pilar-restante ${restante >= 0 ? 'pos' : 'neg'}">${restante >= 0 ? '▼ ' + fmtAbs(restante) + ' disponível' : '▲ ' + fmtAbs(Math.abs(restante)) + ' acima do limite'}</div>`
-      : `<div class="pilar-restante" style="color:var(--muted);font-style:italic;">sem limite definido</div>`;
 
-    // Tabela de despesas das categorias deste pilar (separada do card)
+    // Linhas de categorias expansíveis
     const catRows = p.cats.map(cat => {
-      const gasto = saiData.filter(r => r.cat === cat).reduce((s, r) => s + Math.abs(r.amount), 0);
-      const n = saiData.filter(r => r.cat === cat).length;
+      const catMovs = saiData.filter(r => r.cat === cat).sort((a,b) => b.date.localeCompare(a.date));
+      const gasto = catMovs.reduce((s, r) => s + Math.abs(r.amount), 0);
       const catIdx = CATS.indexOf(cat);
       const color = (typeof CAT_COLORS !== 'undefined' && CAT_COLORS[catIdx]) ? CAT_COLORS[catIdx] : p.color;
       const barW = total > 0 ? Math.min((gasto / total) * 100, 100).toFixed(0) : 0;
-      return `<tr>
-        <td style="font-size:12px;padding:5px 0;display:flex;align-items:center;gap:6px;">
-          <span style="width:8px;height:8px;border-radius:2px;background:${color};flex-shrink:0;display:inline-block;"></span>
-          ${cat}
-        </td>
-        <td style="padding:5px 4px;width:60px;">
-          <div style="background:var(--border);border-radius:3px;height:4px;overflow:hidden;">
-            <div style="width:${barW}%;height:4px;border-radius:3px;background:${color};"></div>
-          </div>
-        </td>
-        <td style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;text-align:right;padding:5px 0;">${n}</td>
-        <td style="font-size:12px;font-family:'DM Mono',monospace;text-align:right;padding:5px 0;color:var(--red);">${gasto > 0 ? '-' + fmtAbs(gasto) : '—'}</td>
-      </tr>`;
+      const movsId = 'catMovs_' + p.id + '_' + cat.replace(/\s/g,'_');
+      const movsHtml = catMovs.map(r =>
+        `<tr>
+          <td style="padding:4px 8px 4px 24px;font-size:11px;color:var(--muted);">${r.date}</td>
+          <td style="padding:4px 8px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;">${r.desc}</td>
+          <td style="padding:4px 8px;font-size:11px;font-family:'DM Mono',monospace;text-align:right;color:var(--red);">-${fmtAbs(Math.abs(r.amount))}</td>
+        </tr>`
+      ).join('');
+      return `
+        <tr onclick="toggleCatMovs('${movsId}')" style="cursor:pointer;border-top:1px solid var(--border);">
+          <td style="padding:7px 0;display:flex;align-items:center;gap:8px;">
+            <span style="width:8px;height:8px;border-radius:2px;background:${color};flex-shrink:0;display:inline-block;"></span>
+            <span style="font-size:12px;">${cat}</span>
+            <span class="cat-arrow" style="font-size:10px;color:var(--muted);">▸</span>
+          </td>
+          <td style="padding:7px 8px;width:90px;">
+            <div style="background:var(--border);border-radius:3px;height:5px;overflow:hidden;">
+              <div style="width:${barW}%;height:5px;border-radius:3px;background:${color};"></div>
+            </div>
+          </td>
+          <td style="font-size:12px;font-family:'DM Mono',monospace;text-align:right;padding:7px 0;color:var(--red);white-space:nowrap;">${gasto > 0 ? '-' + fmtAbs(gasto) : '—'}</td>
+        </tr>
+        <tr id="${movsId}" style="display:none;">
+          <td colspan="3" style="padding:0 0 6px 0;background:var(--surface2);">
+            <table style="width:100%;border-collapse:collapse;">${movsHtml}</table>
+          </td>
+        </tr>`;
     }).join('');
 
-    const tabelaHtml = p.cats.length > 0 ? `
-      <div style="background:var(--surface);border:1px solid ${p.color}30;border-radius:10px;padding:0.75rem 1rem;margin-top:0.5rem;">
-        <table style="width:100%;border-collapse:collapse;">
-          <thead><tr>
-            <th style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding-bottom:6px;text-align:left;font-weight:600;">Categoria</th>
-            <th style="width:60px;"></th>
-            <th style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding-bottom:6px;font-weight:600;">Movs.</th>
-            <th style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding-bottom:6px;font-weight:600;">Total</th>
-          </tr></thead>
-          <tbody>${catRows}</tbody>
-        </table>
-      </div>` : '';
-
-    return `<div style="display:flex;flex-direction:column;gap:0;">
-      <div class="pilar-card" style="background:${p.color}15;border:1.5px solid ${p.color}30;margin-bottom:0;border-radius:12px 12px ${p.cats.length>0?'0 0':'12px 12px'};">
-        <span class="pilar-emoji">${p.emoji}</span>
-        <div class="pilar-nome">${p.nome}</div>
-        <div class="pilar-total">${fmtAbs(total)}</div>
-        <div class="pilar-sub">${pct}% das saídas${entLabel}</div>
-        <div class="pilar-limite-row">
-          <span class="pilar-limite-label">Limite:</span>
-          <input class="pilar-limite-input" type="number" min="0" max="100" step="1" value="${limitePct||''}" placeholder="—"
-            onchange="setPilarLimite('${p.id}', this.value)" title="Percentagem do rendimento para este pilar"/>
-          <span class="pilar-limite-label">% do rendimento</span>
+    return `<div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;">
+      <!-- Cabeçalho -->
+      <div style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:1rem;padding:1rem 1.25rem;background:${p.color}12;border-bottom:1px solid ${p.color}25;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.4rem;">${p.emoji}</span>
+          <div>
+            <div style="font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:${p.color};">${p.nome}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px;">${pct}% das saídas${entLabel}</div>
+          </div>
         </div>
-        <div class="pilar-bar-bg"><div class="pilar-bar-fill" style="width:${barPct}%;background:${barColor};"></div></div>
-        ${restHtml}
+        <div>
+          <div style="background:${p.color}25;border-radius:4px;height:7px;overflow:hidden;margin-bottom:4px;">
+            <div style="width:${barPct}%;height:7px;border-radius:4px;background:${barColor};"></div>
+          </div>
+          <div style="font-size:11px;color:${over?'var(--red)':'var(--green)'};">
+            ${restante !== null ? (restante >= 0 ? '▼ '+fmtAbs(restante)+' disponível' : '▲ '+fmtAbs(Math.abs(restante))+' acima do limite') : '<span style="color:var(--muted);font-style:italic;">sem limite</span>'}
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:1.25rem;font-weight:800;font-family:\'DM Mono\',monospace;">${fmtAbs(total)}</div>
+          <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end;margin-top:3px;">
+            <span style="font-size:11px;color:var(--muted);">Limite:</span>
+            <input type="number" min="0" max="100" step="1" value="${limitePct||''}" placeholder="—"
+              style="width:42px;padding:2px 5px;border:1px solid var(--border);border-radius:4px;font-family:\'DM Mono\',monospace;font-size:11px;background:var(--surface);color:var(--text);text-align:right;"
+              onclick="event.stopPropagation()" onchange="setPilarLimite('${p.id}', this.value)"/>
+            <span style="font-size:11px;color:var(--muted);">%</span>
+          </div>
+        </div>
       </div>
-      ${tabelaHtml}
+      <!-- Categorias -->
+      ${p.cats.length > 0
+        ? `<div style="padding:0 1.25rem 0.5rem;">
+            <table style="width:100%;border-collapse:collapse;">
+              <tbody>${catRows}</tbody>
+            </table>
+          </div>`
+        : `<div style="padding:0.75rem 1.25rem;font-size:12px;color:var(--muted);font-style:italic;">Nenhuma categoria — usa ⚙️ Configurar para atribuir</div>`
+      }
     </div>`;
   }).join('');
 }
@@ -1333,8 +1372,7 @@ function renderPilaresConfig() {
   const grid = document.getElementById('pilaresConfigGrid');
   if (!grid) return;
   const assignedCats = PILARES.flatMap(p => p.cats);
-  const CATS_NEUTRAS = ['Transferências', 'Rendimentos', 'Diversos'];
-  const unassigned = CATS.filter(c => !assignedCats.includes(c) && !CATS_NEUTRAS.includes(c));
+  const unassigned = CATS.filter(c => !assignedCats.includes(c));
   const cols = [
     ...PILARES.map(p => ({ id: p.id, title: `${p.emoji} ${p.nome}`, color: p.color, cats: p.cats, isPilar: true })),
     { id: 'outros', title: '⬜ Sem pilar', color: '#8a8680', cats: unassigned, isPilar: false }
@@ -1535,9 +1573,11 @@ function renderResumoOnly(data, fullData) {
 
 function renderResumo(data) {
   renderResumoMesChips();
+  // Aplica filtro de mês a ambos os resumos
   const resumoData = activeResumoMonth === 'all' ? data : data.filter(r => r.date.slice(0,7) === activeResumoMonth);
+  renderResumoOnly(resumoData, data);
 
-  // Entradas
+  // Entradas — mesmo filtro de mês
   const entCats = {};
   resumoData.filter(r => r.amount > 0).forEach(r => {
     if (!entCats[r.cat]) entCats[r.cat] = { total: 0, n: 0, movs: [] };
@@ -1549,13 +1589,11 @@ function renderResumo(data) {
   const entMax  = entKeys.length ? entCats[entKeys[0]].total : 1;
   const entTotal = entKeys.reduce((s,k) => s + entCats[k].total, 0);
   const entBody = document.getElementById('resumoEntBody');
-  if (entBody) {
-    if (!entKeys.length) {
-      entBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;font-size:12px;">Sem entradas</td></tr>';
-    } else {
-      entBody.innerHTML = buildResumoRows(entCats, entKeys, entMax, false)
-        + `<tr class="total-row"><td colspan="2"><strong>Total</strong></td><td class="n-cell">${resumoData.filter(r=>r.amount>0).length}</td><td class="val-cell pos"><strong>+${fmtAbs(entTotal)}</strong></td></tr>`;
-    }
+  if (!entKeys.length) {
+    entBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;font-size:12px;">Sem entradas</td></tr>';
+  } else {
+    entBody.innerHTML = buildResumoRows(entCats, entKeys, entMax, false)
+      + `<tr class="total-row"><td colspan="2"><strong>Total</strong></td><td class="n-cell">${resumoData.filter(r=>r.amount>0).length}</td><td class="val-cell pos"><strong>+${fmtAbs(entTotal)}</strong></td></tr>`;
   }
 }
 
