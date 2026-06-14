@@ -1432,10 +1432,15 @@ function setPilarLimite(pilarId, val) {
 function renderPilaresConfig() {
   const grid = document.getElementById('pilaresConfigGrid');
   if (!grid) return;
-  const assignedCats = PILARES.flatMap(p => p.cats);
-  // Categorias que têm pelo menos uma saída nos dados, OU que foram criadas pelo utilizador
+  // Categorias que têm pelo menos uma saída nos dados, OU criadas pelo utilizador (ainda sem movimentos)
   const catsComSaidas = new Set(allData.filter(r => r.amount < 0).map(r => r.cat));
-  const unassigned = CATS.filter(c => !assignedCats.includes(c) && (!allData.length || catsComSaidas.has(c) || CUSTOM_CATS.includes(c)));
+  const catValida = c => !allData.length || catsComSaidas.has(c) || CUSTOM_CATS.includes(c);
+  // Filtra também as que estão nos pilares mas já não têm saídas
+  const assignedCats = PILARES.flatMap(p => p.cats);
+  if (allData.length) {
+    PILARES.forEach(p => { p.cats = p.cats.filter(c => catValida(c)); });
+  }
+  const unassigned = CATS.filter(c => !PILARES.flatMap(p => p.cats).includes(c) && catValida(c));
   const cols = [
     ...PILARES.map(p => ({ id: p.id, title: `${p.emoji} ${p.nome}`, color: p.color, cats: p.cats, isPilar: true })),
     { id: 'outros', title: '⬜ Sem pilar', color: '#8a8680', cats: unassigned, isPilar: false }
