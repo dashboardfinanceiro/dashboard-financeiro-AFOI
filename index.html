@@ -676,55 +676,6 @@
   </div>
 
   <!-- Budget Objetivos -->
-  <div class="card" style="margin-top:1rem;" id="budgetCard">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
-      <p class="card-title" style="margin-bottom:0;">🎯 Objetivos de orçamento</p>
-      <button class="btn" onclick="toggleBudget()" id="budgetToggleBtn">Mostrar objetivos</button>
-    </div>
-    <div id="budgetPainel" class="hidden">
-      <!-- Rendimento efetivo -->
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <span style="font-size:13px;font-weight:500;flex:1;min-width:160px;">💰 Receitas do período</span>
-        <span id="rendimentoEfetivoLabel" style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--green);">—</span>
-        <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">calculado automaticamente com base no período selecionado</span>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:12px;color:var(--muted);">ou define manualmente:</span>
-          <input type="number" id="budgetRendimento" placeholder="0" min="0" step="50"
-            style="width:100px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:'DM Mono',monospace;font-size:13px;background:var(--surface);color:var(--text);text-align:right;"
-            oninput="onBudgetRendimentoChange()" onchange="saveBudget()"/>
-          <span style="font-size:12px;color:var(--muted);">€</span>
-        </div>
-      </div>
-      <!-- Estratégia -->
-      <div class="budget-strategy-tabs">
-        <button class="budget-strategy-tab active" data-strategy="custom" onclick="applyStrategy('custom')">Personalizado</button>
-        <button class="budget-strategy-tab" data-strategy="503020" onclick="applyStrategy('503020')">50/30/20</button>
-        <button class="budget-strategy-tab" data-strategy="602020" onclick="applyStrategy('602020')">60/20/20</button>
-        <button class="budget-strategy-tab" data-strategy="zero" onclick="applyStrategy('zero')">Base zero</button>
-      </div>
-      <p id="budgetStrategyDesc" style="font-size:12px;color:var(--muted);margin-bottom:1rem;font-family:'DM Mono',monospace;"></p>
-      <!-- Overview pilares (para estratégias com grupos) -->
-      <div id="budgetOverview" class="budget-overview" style="display:none;">
-        <div class="budget-overview-item">
-          <div class="budget-overview-label">Necessidades</div>
-          <div class="budget-overview-val" id="ovNecessidades">—</div>
-          <div class="budget-overview-sub" id="ovNecessidadesPct">—</div>
-        </div>
-        <div class="budget-overview-item">
-          <div class="budget-overview-label">Desejos</div>
-          <div class="budget-overview-val" id="ovDesejos">—</div>
-          <div class="budget-overview-sub" id="ovDesejosPct">—</div>
-        </div>
-        <div class="budget-overview-item">
-          <div class="budget-overview-label">Poupança</div>
-          <div class="budget-overview-val" id="ovPoupanca">—</div>
-          <div class="budget-overview-sub" id="ovPoupancaPct">—</div>
-        </div>
-      </div>
-      <!-- Grid de categorias -->
-      <div id="budgetCatsGrid" class="budget-cats-grid"></div>
-    </div>
-  </div>
 
   <!-- Painel de Regras -->
   <div class="card" style="margin-top:1rem;" id="regrasCard">
@@ -1267,8 +1218,8 @@ function toggleCatMovs(id) {
 function renderPilaresCards(data) {
   const saiData = data.filter(r => r.amount < 0);
   const totalSai = saiData.reduce((s, r) => s + Math.abs(r.amount), 0);
-  const totalEnt = data.filter(r => r.amount > 0 && !['Transferências','Rendimentos'].includes(r.cat)).reduce((s, r) => s + r.amount, 0);
-  const baseRendimento = totalEnt > 0 ? totalEnt : (typeof getRendimentoEfetivo === 'function' ? getRendimentoEfetivo() : budgetRendimento);
+  const totalEnt = data.filter(r => r.amount > 0).reduce((s, r) => s + r.amount, 0);
+  const baseRendimento = totalEnt > 0 ? totalEnt : budgetRendimento;
   const cardsEl = document.getElementById('pilaresCards');
   if (!cardsEl) return;
 
