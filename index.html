@@ -1226,26 +1226,28 @@ function setPilarChartMode(mode) {
 function renderPilaresChart() {
   const cardEl = document.getElementById('pilaresChartCard');
   const hasPilarCats = PILARES.some(p => p.cats.length > 0);
-  const months = [...new Set(allData.map(r => r.date.slice(0,7)))].sort();
 
-  if (!allData.length || months.length < 2 || !hasPilarCats) {
+  if (!allData.length || !hasPilarCats) {
     if (cardEl) cardEl.style.display = 'none';
     return;
   }
   if (cardEl) cardEl.style.display = '';
 
+  // Usa sempre os 12 meses do ano atual
+  const currentYear = new Date().getFullYear().toString();
+  const allMonths = Array.from({length: 12}, (_, i) => currentYear + '-' + String(i+1).padStart(2,'0'));
   const nomeMes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const labels = months.map(m => { const [y,mo] = m.split('-'); return nomeMes[parseInt(mo)-1]+' '+y.slice(2); });
+  const labels = allMonths.map(m => { const [,mo] = m.split('-'); return nomeMes[parseInt(mo)-1]; });
 
   const datasets = PILARES.filter(p => p.cats.length > 0).map(p => {
-    const dataPoints = months.map(m => {
+    const dataPoints = allMonths.map(m => {
       const mData = allData.filter(r => r.date.slice(0,7) === m && r.amount < 0 && p.cats.includes(r.cat));
       const total = mData.reduce((s,r) => s + Math.abs(r.amount), 0);
       if (pilarChartMode === 'pct') {
         const rendMes = allData.filter(r => r.date.slice(0,7) === m && r.amount > 0).reduce((s,r) => s + r.amount, 0);
-        return rendMes > 0 ? parseFloat((total / rendMes * 100).toFixed(1)) : 0;
+        return rendMes > 0 ? parseFloat((total / rendMes * 100).toFixed(1)) : null;
       }
-      return parseFloat(total.toFixed(2));
+      return total > 0 ? parseFloat(total.toFixed(2)) : null;
     });
     return {
       label: p.emoji + ' ' + p.nome,
@@ -1253,11 +1255,12 @@ function renderPilaresChart() {
       borderColor: p.color,
       backgroundColor: p.color + '22',
       pointBackgroundColor: p.color,
-      pointRadius: 5,
+      pointRadius: ctx => ctx.parsed.y !== null ? 5 : 0,
       pointHoverRadius: 7,
       tension: 0.3,
       fill: false,
       borderWidth: 2,
+      spanGaps: false,
     };
   });
 
