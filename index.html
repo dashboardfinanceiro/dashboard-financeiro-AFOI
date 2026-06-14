@@ -598,6 +598,21 @@
     <div id="monthFilterChips" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;"></div>
   </div>
 
+  <!-- Gráfico evolução por pilar -->
+  <div class="card" id="pilaresChartCard" style="margin-bottom:1rem;display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+      <p class="card-title" style="margin-bottom:0;">Evolução por pilar</p>
+      <div style="display:flex;gap:6px;">
+        <button id="pilarChartEur" onclick="setPilarChartMode('eur')" class="tab active" style="padding:4px 12px;font-size:11px;">€</button>
+        <button id="pilarChartPct" onclick="setPilarChartMode('pct')" class="tab" style="padding:4px 12px;font-size:11px;">%</button>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px;">
+      <canvas id="chartPilares"></canvas>
+    </div>
+    <div id="legendPilares" class="legend" style="margin-top:10px;"></div>
+  </div>
+
   <!-- Pilares Financeiros -->
   <div class="card" id="pilaresCard" style="margin-bottom:1rem;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
@@ -1192,10 +1207,97 @@ function setPilarMonth(m) {
 function renderPilares(data) {
   loadPilares();
   const months = [...new Set(allData.map(r => r.date.slice(0,7)))].sort();
-  // Usar o filtro global — se for 'all', usar o mês mais recente
   activePilarMonth = activeTableMonth !== 'all' ? activeTableMonth : (months[months.length - 1] || 'all');
   const d = activePilarMonth === 'all' ? allData : allData.filter(r => r.date.slice(0,7) === activePilarMonth);
   renderPilaresCards(d);
+  renderPilaresChart();
+}
+
+let chartPilares = null;
+let pilarChartMode = 'eur';
+
+function setPilarChartMode(mode) {
+  pilarChartMode = mode;
+  document.getElementById('pilarChartEur').classList.toggle('active', mode === 'eur');
+  document.getElementById('pilarChartPct').classList.toggle('active', mode === 'pct');
+  renderPilaresChart();
+}
+
+function renderPilaresChart() {
+  const cardEl = document.getElementById('pilaresChartCard');
+  const hasPilarCats = PILARES.some(p => p.cats.length > 0);
+  const months = [...new Set(allData.map(r => r.date.slice(0,7)))].sort();
+
+  if (!allData.length || months.length < 2 || !hasPilarCats) {
+    if (cardEl) cardEl.style.display = 'none';
+    return;
+  }
+  if (cardEl) cardEl.style.display = '';
+
+  const nomeMes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const labels = months.map(m => { const [y,mo] = m.split('-'); return nomeMes[parseInt(mo)-1]+' '+y.slice(2); });
+
+  const datasets = PILARES.filter(p => p.cats.length > 0).map(p => {
+    const dataPoints = months.map(m => {
+      const mData = allData.filter(r => r.date.slice(0,7) === m && r.amount < 0 && p.cats.includes(r.cat));
+      const total = mData.reduce((s,r) => s + Math.abs(r.amount), 0);
+      if (pilarChartMode === 'pct') {
+        const rendMes = allData.filter(r => r.date.slice(0,7) === m && r.amount > 0).reduce((s,r) => s + r.amount, 0);
+        return rendMes > 0 ? parseFloat((total / rendMes * 100).toFixed(1)) : 0;
+      }
+      return parseFloat(total.toFixed(2));
+    });
+    return {
+      label: p.emoji + ' ' + p.nome,
+      data: dataPoints,
+      borderColor: p.color,
+      backgroundColor: p.color + '22',
+      pointBackgroundColor: p.color,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      tension: 0.3,
+      fill: false,
+      borderWidth: 2,
+    };
+  });
+
+  if (chartPilares) chartPilares.destroy();
+  chartPilares = new Chart(document.getElementById('chartPilares'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              return ' ' + ctx.dataset.label + ': ' + (pilarChartMode === 'pct' ? v.toFixed(1) + '%' : v.toFixed(2).replace('.',',') + ' \u20ac');
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#8a8680', font: { size: 11 } }, grid: { color: '#e0dbd322' } },
+        y: {
+          ticks: {
+            color: '#8a8680', font: { size: 11 },
+            callback: v => pilarChartMode === 'pct' ? v + '%' : v + '\u20ac'
+          },
+          grid: { color: '#e0dbd355' }
+        }
+      }
+    }
+  });
+
+  const leg = document.getElementById('legendPilares');
+  if (leg) {
+    leg.innerHTML = datasets.map(d =>
+      '<span><span class="legend-dot" style="background:' + d.borderColor + '"></span>' + d.label + '</span>'
+    ).join('');
+  }
 }
 
 function toggleCatMovs(id) {
