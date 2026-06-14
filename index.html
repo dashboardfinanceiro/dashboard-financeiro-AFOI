@@ -746,10 +746,12 @@ const CAT_COLORS = ['#1D9E75','#185FA5','#BA7517','#D4537E','#b05ec4','#533AB7',
 let userRules = []; // [{ keyword, cat }] — por ordem, primeira que bater ganha
 
 function loadRules() {
-  // Se já há dados em memória (restaurados do Drive), não sobrescrever com localStorage
   loadPilares();
+  // Se já há dados em memória (restaurados do Drive), não sobrescrever
   if (userRules.length || CUSTOM_CATS.length) return;
-  // Fallback: tentar localStorage (só útil sem sessão Google)
+  // Se há sessão Google ativa, não carregar do localStorage — o Drive é a fonte da verdade
+  if (typeof gAccessToken !== 'undefined' && gAccessToken) return;
+  // Fallback: localStorage só quando não há sessão Google
   try {
     const raw = localStorage.getItem('finDash_rules');
     userRules = raw ? JSON.parse(raw) : [];
@@ -1722,6 +1724,7 @@ function save() {
 
 function load() {
   // Só usado como fallback quando não há sessão Google activa
+  if (typeof gAccessToken !== 'undefined' && gAccessToken) return false;
   try {
     const raw = localStorage.getItem('finDash_v3');
     if (raw) {
