@@ -1182,7 +1182,8 @@ function renderPilaresMesChips(data) {
   if (!el) return;
   const months = [...new Set(allData.map(r => r.date.slice(0,7)))].sort();
   const nomeMes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  let html = `<span class="pilares-mes-chip ${activePilarMonth==='all'?'active':''}" onclick="setPilarMonth('all')">Todos</span>`;
+  // Sem "Todos" — só meses individuais
+  let html = '';
   months.forEach(m => {
     const [y,mo] = m.split('-');
     const label = nomeMes[parseInt(mo)-1]+' '+y;
@@ -1193,13 +1194,18 @@ function renderPilaresMesChips(data) {
 
 function setPilarMonth(m) {
   activePilarMonth = m;
-  const data = activePilarMonth === 'all' ? allData : allData.filter(r => r.date.slice(0,7) === m);
+  const data = allData.filter(r => r.date.slice(0,7) === m);
   renderPilaresMesChips(data);
   renderPilaresCards(data);
 }
 
 function renderPilares(data) {
   loadPilares();
+  const months = [...new Set(allData.map(r => r.date.slice(0,7)))].sort();
+  // Se activePilarMonth é 'all' ou não existe nos meses disponíveis, seleciona o mais recente
+  if (activePilarMonth === 'all' || !months.includes(activePilarMonth)) {
+    activePilarMonth = months[months.length - 1] || 'all';
+  }
   renderPilaresMesChips(data);
   const d = activePilarMonth === 'all' ? allData : allData.filter(r => r.date.slice(0,7) === activePilarMonth);
   renderPilaresCards(d);
@@ -1318,7 +1324,31 @@ function renderPilaresCards(data) {
 
 function setPilarLimite(pilarId, val) {
   const p = PILARES.find(x => x.id === pilarId);
-  if (p) { p.limite = parseFloat(val) || 0; savePilares(); }
+  if (!p) return;
+  const novoVal = Math.min(100, Math.max(0, parseFloat(val) || 0));
+  p.limite = novoVal;
+
+  // Redistribuir o restante proporcionalmente pelos outros pilares
+  const outros = PILARES.filter(x => x.id !== pilarId);
+  const totalOutros = outros.reduce((s, x) => s + (x.limite || 0), 0);
+  const restante = 100 - novoVal;
+
+  if (totalOutros > 0) {
+    // Redistribuir proporcionalmente
+    outros.forEach(x => {
+      x.limite = Math.round((x.limite || 0) / totalOutros * restante * 10) / 10;
+    });
+    // Corrigir arredondamentos para fechar exatamente em 100%
+    const totalApos = PILARES.reduce((s, x) => s + (x.limite || 0), 0);
+    const diff = Math.round((100 - totalApos) * 10) / 10;
+    if (diff !== 0) outros[outros.length - 1].limite = Math.round(((outros[outros.length - 1].limite || 0) + diff) * 10) / 10;
+  } else {
+    // Outros todos a zero — dividir igualmente
+    const parteIgual = Math.round(restante / outros.length * 10) / 10;
+    outros.forEach((x, i) => { x.limite = i === outros.length - 1 ? Math.round((restante - parteIgual * (outros.length - 1)) * 10) / 10 : parteIgual; });
+  }
+
+  savePilares();
   const d = activePilarMonth === 'all' ? allData : allData.filter(r => r.date.slice(0,7) === activePilarMonth);
   renderPilaresCards(d);
 }
