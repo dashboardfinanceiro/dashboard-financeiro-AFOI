@@ -1499,11 +1499,14 @@ function togglePilaresConfig() {
 
 // ─── Render KPIs ─────────────────────────────────────────────────────────────
 function renderKPIs(data) {
-  const ent = data.filter(r => r.amount > 0).reduce((s, r) => s + r.amount, 0);
+  // Entradas = só Rendimentos; despesas líquidas (saídas - reembolsos em outras cats)
+  const ent = data.filter(r => r.amount > 0 && r.cat === 'Rendimentos').reduce((s, r) => s + r.amount, 0);
   const sai = data.filter(r => r.amount < 0).reduce((s, r) => s + r.amount, 0);
+  const reembolsos = data.filter(r => r.amount > 0 && r.cat !== 'Rendimentos').reduce((s, r) => s + r.amount, 0);
+  const saiLiq = Math.abs(sai) - reembolsos;
   document.getElementById('kpiEnt').textContent = '+' + fmtAbs(ent);
-  document.getElementById('kpiEntN').textContent = data.filter(r => r.amount > 0).length + ' movimentos';
-  document.getElementById('kpiSai').textContent = '-' + fmtAbs(Math.abs(sai));
+  document.getElementById('kpiEntN').textContent = data.filter(r => r.amount > 0 && r.cat === 'Rendimentos').length + ' movimentos';
+  document.getElementById('kpiSai').textContent = '-' + fmtAbs(Math.max(0, saiLiq));
   document.getElementById('kpiSaiN').textContent = data.filter(r => r.amount < 0).length + ' movimentos';
 }
 
@@ -1652,9 +1655,10 @@ function renderResumo(data) {
   // Usa o mesmo filtro global da página
   const resumoData = activeTableMonth === 'all' ? data : data.filter(r => r.date.slice(0,7) === activeTableMonth);
 
-  // Entradas
+  // Entradas — só categoria "Rendimentos" conta como rendimento real
+  // Outras entradas (reembolsos, etc) abatam às despesas da sua categoria, não aparecem aqui
   const entCats = {};
-  resumoData.filter(r => r.amount > 0).forEach(r => {
+  resumoData.filter(r => r.amount > 0 && r.cat === 'Rendimentos').forEach(r => {
     if (!entCats[r.cat]) entCats[r.cat] = { total: 0, n: 0, movs: [] };
     entCats[r.cat].total += r.amount;
     entCats[r.cat].n++;
@@ -1663,13 +1667,14 @@ function renderResumo(data) {
   const entKeys = Object.keys(entCats).sort((a,b) => entCats[b].total - entCats[a].total);
   const entMax = entKeys.length ? entCats[entKeys[0]].total : 1;
   const entTotal = entKeys.reduce((s,k) => s + entCats[k].total, 0);
+  const entMovsTotal = resumoData.filter(r => r.amount > 0 && r.cat === 'Rendimentos').length;
   const entBody = document.getElementById('resumoEntBody');
   if (entBody) {
     if (!entKeys.length) {
-      entBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;font-size:12px;">Sem entradas</td></tr>';
+      entBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;font-size:12px;">Sem rendimentos</td></tr>';
     } else {
       entBody.innerHTML = buildResumoRows(entCats, entKeys, entMax, false)
-        + `<tr class="total-row"><td colspan="2"><strong>Total</strong></td><td class="n-cell">${resumoData.filter(r=>r.amount>0).length}</td><td class="val-cell pos"><strong>+${fmtAbs(entTotal)}</strong></td></tr>`;
+        + `<tr class="total-row"><td colspan="2"><strong>Total</strong></td><td class="n-cell">${entMovsTotal}</td><td class="val-cell pos"><strong>+${fmtAbs(entTotal)}</strong></td></tr>`;
     }
   }
 }
