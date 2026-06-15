@@ -737,7 +737,7 @@ let metaInfo = {}; // saldo bancário, período, conta
 let loadedMonths = []; // [{ key, label, count }] — registo de meses carregados
 
 // ─── Categories ──────────────────────────────────────────────────────────────
-let CATS = ['Restauração','Supermercado','Transportes','Saúde','Estética','Telecomunicações','Seguros','Habitação','Lazer','Restaurantes','Transferências','Poupança','Rendimentos','Diversos'];
+let CATS = ['Restauração','Supermercado','Transportes','Saúde','Estética','Telecomunicações','Seguros','Habitação','Lazer','Restaurantes','Rendimentos','Diversos'];
 let CUSTOM_CATS = []; // categorias adicionadas pelo utilizador
 let DELETED_BASE_CATS = []; // categorias base eliminadas pelo utilizador
 const CAT_COLORS = ['#1D9E75','#185FA5','#BA7517','#D4537E','#b05ec4','#533AB7','#D85A30','#8a8680','#c8440a','#e8a87c','#7ec8e3','#f0a500','#2ecc71','#95a5a6'];
@@ -905,7 +905,7 @@ function renderCatChips() {
   const el = document.getElementById('catChipsList');
   if (!el) return;
   // Mostra todas as categorias com botão × para remover
-  const BASE_CATS_DEFAULT = ['Restauração','Supermercado','Transportes','Saúde','Estética','Telecomunicações','Seguros','Habitação','Lazer','Restaurantes','Transferências','Poupança','Rendimentos','Diversos'];
+  const BASE_CATS_DEFAULT = ['Restauração','Supermercado','Transportes','Saúde','Estética','Telecomunicações','Seguros','Habitação','Lazer','Restaurantes','Rendimentos','Diversos'];
   el.innerHTML = CATS.map(cat => {
     const color = CAT_COLORS[CATS.indexOf(cat)] || '#888';
     const isDefault = BASE_CATS_DEFAULT.includes(cat);
@@ -977,7 +977,7 @@ function autoCategory(desc) {
   // 2. Regras base
   const d = desc.toUpperCase();
   if (/SALARIO|VENCIMENTO|ORDENADO|RENDIMENTO|PENSION/.test(d)) return 'Rendimentos';
-  if (/CXDAPP|CONTA POUPAN/.test(d)) return 'Poupança';
+  if (/CXDAPP|CONTA POUPAN/.test(d)) return 'Rendimentos';
   if (/CONTINENTE|PINGO DOCE|INTERMARCHE|LIDL|ALDI|MERCADO|MINI PRECO|AUCHAN|CELEIRO|E-LECLERC|MINIPRECO/.test(d)) return 'Supermercado';
   if (/RESTAURANTE|CAFE|KFC|MCDONALDS|BURGUER|PIZZA|SUSHI|TASCA|PASTELARIA|HONEST GREENS|CAIS DO RIO|GULA|AUREA/.test(d)) return 'Restaurantes';
   if (/LASERUM|CABELEIREIRO|ESTETICA|ESTETICISTA|BEAUTY|BARBEIRO/.test(d)) return 'Estética';
@@ -986,7 +986,7 @@ function autoCategory(desc) {
   if (/SEGURO|FIDELIDADE|OCIDENTAL|TRANQUILIDADE|ALLIANZ/.test(d)) return 'Seguros';
   if (/RENDA|CONDOMINIO|AGUA|LUZ|GAS|EDP|ENDESA|GALP|ADA |AGUAS/.test(d)) return 'Habitação';
   if (/UBER|BOLT|CP |METRO|CARRIS|GASOLINA|PARQUE|TOLL|VIA VERDE/.test(d)) return 'Transportes';
-  if (/TRF |TFI |MBWAY|TRANSFERENCIA|SEPA/.test(d)) return 'Transferências';
+  if (/TRF |TFI |MBWAY|TRANSFERENCIA|SEPA/.test(d)) return 'Diversos';
   if (/NETFLIX|SPOTIFY|AMAZON|STEAM|CINEMA|TEATRO/.test(d)) return 'Lazer';
   if (/COMPRAS|CASA BA|AVOLTA|EASYPAY/.test(d)) return 'Restauração';
   return 'Diversos';
@@ -1247,10 +1247,14 @@ function renderPilaresChart() {
 
   const datasets = PILARES.filter(p => p.cats.length > 0).map(p => {
     const dataPoints = allMonths.map(m => {
-      const mData = allData.filter(r => r.date.slice(0,7) === m && r.amount < 0 && p.cats.includes(r.cat));
-      const total = mData.reduce((s,r) => s + Math.abs(r.amount), 0);
+      const gastoLiqMes = cat => {
+        const sai = allData.filter(r => r.date.slice(0,7) === m && r.amount < 0 && r.cat === cat).reduce((s,r) => s + Math.abs(r.amount), 0);
+        const ent = allData.filter(r => r.date.slice(0,7) === m && r.amount > 0 && r.cat === cat && r.cat !== 'Rendimentos').reduce((s,r) => s + r.amount, 0);
+        return Math.max(0, sai - ent);
+      };
+      const total = p.cats.reduce((s, cat) => s + gastoLiqMes(cat), 0);
       if (pilarChartMode === 'pct') {
-        const rendMes = allData.filter(r => r.date.slice(0,7) === m && r.amount > 0).reduce((s,r) => s + r.amount, 0);
+        const rendMes = allData.filter(r => r.date.slice(0,7) === m && r.amount > 0 && r.cat === 'Rendimentos').reduce((s,r) => s + r.amount, 0);
         return rendMes > 0 ? parseFloat((total / rendMes * 100).toFixed(1)) : null;
       }
       return total > 0 ? parseFloat(total.toFixed(2)) : null;
@@ -1320,19 +1324,24 @@ function toggleCatMovs(id) {
 }
 
 function renderPilaresCards(data) {
-  const saiData = data.filter(r => r.amount < 0);
   const catsDePilares = PILARES.flatMap(p => p.cats);
-  const totalSai = saiData.filter(r => catsDePilares.includes(r.cat)).reduce((s, r) => s + Math.abs(r.amount), 0);
+  // Despesa líquida: saídas - entradas (que não sejam Rendimentos) da mesma categoria
+  const gastoLiquidoCat = cat => {
+    const saidas = data.filter(r => r.amount < 0 && r.cat === cat).reduce((s,r) => s + Math.abs(r.amount), 0);
+    const entradas = data.filter(r => r.amount > 0 && r.cat === cat && r.cat !== 'Rendimentos').reduce((s,r) => s + r.amount, 0);
+    return Math.max(0, saidas - entradas);
+  };
+  const totalSai = catsDePilares.reduce((s, cat) => s + gastoLiquidoCat(cat), 0);
   const cardsEl = document.getElementById('pilaresCards');
   if (!cardsEl) return;
 
   cardsEl.innerHTML = PILARES.map(p => {
-    const total = saiData.filter(r => p.cats.includes(r.cat)).reduce((s, r) => s + Math.abs(r.amount), 0);
+    const total = p.cats.reduce((s, cat) => s + gastoLiquidoCat(cat), 0);
     const pctPilar = totalSai > 0 ? (total / totalSai * 100).toFixed(1) : '0.0';
 
     const catRows = p.cats.map(cat => {
-      const catMovs = saiData.filter(r => r.cat === cat).sort((a,b) => b.date.localeCompare(a.date));
-      const gasto = catMovs.reduce((s, r) => s + Math.abs(r.amount), 0);
+      const catMovs = data.filter(r => r.cat === cat).sort((a,b) => b.date.localeCompare(a.date));
+      const gasto = gastoLiquidoCat(cat);
       if (gasto === 0) return '';
       const pctCat = total > 0 ? (gasto / total * 100).toFixed(1) : '0.0';
       const catIdx = CATS.indexOf(cat);
@@ -2196,7 +2205,8 @@ function applyStrategy(strategy) {
 
 function getRendimentoEfetivo() {
   const filtered = getFilteredData();
-  const total = filtered.filter(r => r.amount > 0).reduce((s, r) => s + r.amount, 0);
+  // Só a categoria "Rendimentos" conta como rendimento real
+  const total = filtered.filter(r => r.amount > 0 && r.cat === 'Rendimentos').reduce((s, r) => s + r.amount, 0);
   return total > 0 ? total : budgetRendimento;
 }
 
