@@ -613,12 +613,17 @@
 
   <!-- Conclusões mensais -->
   <div class="card conclusoes-card" id="conclusoesCard" style="display:none;margin-bottom:1rem;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;flex-wrap:wrap;gap:8px;">
-      <p class="card-title" style="margin-bottom:0;">💡 Conclusões do mês</p>
-      <div id="conclusaoMesChips" class="conclusao-mes-chips" style="margin-bottom:0;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;flex-wrap:wrap;gap:8px;cursor:pointer;" onclick="toggleConclusoes()">
+      <p class="card-title" style="margin-bottom:0;display:flex;align-items:center;gap:8px;">
+        💡 Conclusões do mês
+        <span id="conclusoesArrow" style="font-size:11px;color:var(--muted);transition:transform 0.2s;display:inline-block;">▼</span>
+      </p>
+      <div id="conclusaoMesChips" class="conclusao-mes-chips" style="margin-bottom:0;" onclick="event.stopPropagation()"></div>
     </div>
-    <div id="conclusaoLista" class="conclusao-lista">
-      <p class="conclusao-empty">Sem dados para mostrar</p>
+    <div id="conclusaoBody" style="margin-top:0.75rem;">
+      <div id="conclusaoLista" class="conclusao-lista">
+        <p class="conclusao-empty">Sem dados para mostrar</p>
+      </div>
     </div>
   </div>
 
@@ -1800,20 +1805,16 @@ function renderConclusoes(data) {
     itens.push({ icon: '📊', text: `<strong>${topCats[0][0]}</strong> e <strong>${topCats[1][0]}</strong> representam <strong>${pct}%</strong> das despesas totais.` });
   }
 
-  // ── 3. Pilares: % do rendimento (sobra = poupança implícita) ──
-  // Percentagem = gasto do pilar / rendimento real. Pode sobrar dinheiro (poupança não categorizada).
+  // ── 3. Pilares: só mostra se o utilizador definiu limites ──
+  // Se não há limites definidos, não há nada para comparar — omite silenciosamente.
   if (rendMes > 0) {
-    const pilaresComGastos = Object.values(gastosPorPilar).filter(p => p.total > 0);
-    pilaresComGastos.forEach(p => {
+    const pilaresComLimite = Object.values(gastosPorPilar).filter(p => p.total > 0 && p.limite > 0);
+    pilaresComLimite.forEach(p => {
       const pctRend = Math.round(p.total / rendMes * 100);
-      if (p.limite > 0) {
-        if (pctRend > p.limite) {
-          itens.push({ icon: '🔴', text: `Pilar <strong>${p.nome}</strong>: usou <strong>${pctRend}%</strong> do rendimento — acima do limite definido de ${p.limite}% (${fmtAbs(p.total)} €).` });
-        } else {
-          itens.push({ icon: '🟢', text: `Pilar <strong>${p.nome}</strong>: usou <strong>${pctRend}%</strong> do rendimento — dentro do limite de ${p.limite}% (${fmtAbs(p.total)} €).` });
-        }
+      if (pctRend > p.limite) {
+        itens.push({ icon: '🔴', text: `Pilar <strong>${p.nome}</strong>: usou <strong>${pctRend}%</strong> do rendimento — acima do limite de ${p.limite}% (${fmtAbs(p.total)} €).` });
       } else {
-        itens.push({ icon: '📌', text: `Pilar <strong>${p.nome}</strong>: <strong>${fmtAbs(p.total)} €</strong> — ${pctRend}% do rendimento de ${nomeMes}.` });
+        itens.push({ icon: '🟢', text: `Pilar <strong>${p.nome}</strong>: usou <strong>${pctRend}%</strong> do rendimento — dentro do limite de ${p.limite}% (${fmtAbs(p.total)} €).` });
       }
     });
   }
@@ -1884,6 +1885,19 @@ function renderConclusoes(data) {
   lista.innerHTML = itens.map(i =>
     `<div class="conclusao-item"><span class="conclusao-icon">${i.icon}</span><span class="conclusao-text">${i.text}</span></div>`
   ).join('');
+}
+
+let conclusoesExpanded = true;
+
+function toggleConclusoes() {
+  const body = document.getElementById('conclusaoBody');
+  const arrow = document.getElementById('conclusoesArrow');
+  if (!body) return;
+  conclusoesExpanded = !conclusoesExpanded;
+  body.style.display = conclusoesExpanded ? '' : 'none';
+  if (arrow) {
+    arrow.style.transform = conclusoesExpanded ? '' : 'rotate(-90deg)';
+  }
 }
 
 function renderTable(data) {
