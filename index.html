@@ -1428,6 +1428,11 @@ function renderPilaresCards(data) {
       }
     </div>`;
   }).join('');
+
+  // Linha de total dos pilares
+  if (totalSai > 0) {
+    cardsEl.innerHTML += `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1.25rem;border:1.5px solid var(--border);border-radius:10px;background:var(--surface2);margin-top:0.25rem;"><span style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;">Total nos pilares</span><span style="font-size:1.15rem;font-weight:800;font-family:'DM Mono',monospace;color:var(--red);">-${fmtAbs(totalSai)}</span></div>`;
+  }
 }
 
 function setPilarLimite(pilarId, val) {
