@@ -398,6 +398,19 @@
   .mini-bar-bg { background: var(--surface2); border-radius: 3px; height: 5px; overflow: hidden; }
   .mini-bar-fill { height: 5px; border-radius: 3px; }
 
+  /* Conclusões mensais */
+  .conclusoes-card { margin-bottom: 1rem; }
+  .conclusao-titulo { font-size: 14px; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px; }
+  .conclusao-mes-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1rem; }
+  .conclusao-mes-chip { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500; cursor: pointer; border: 1.5px solid var(--border); background: var(--surface2); color: var(--muted); transition: all 0.15s; }
+  .conclusao-mes-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .conclusao-lista { display: flex; flex-direction: column; gap: 8px; }
+  .conclusao-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--surface2); font-size: 13px; line-height: 1.45; }
+  .conclusao-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .conclusao-text { color: var(--text); }
+  .conclusao-text strong { font-weight: 600; }
+  .conclusao-empty { text-align: center; color: var(--muted); padding: 1.5rem; font-size: 12px; }
+
   /* Budget Objetivos */
   .budget-section { margin-bottom: 1rem; }
   /* Pilares */
@@ -636,6 +649,17 @@
         <thead><tr><th>Categoria</th><th class="bar-cell"></th><th>Movs.</th><th>Total</th></tr></thead>
         <tbody id="resumoEntBody"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;font-size:12px;">Sem dados</td></tr></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Conclusões mensais -->
+  <div class="card conclusoes-card" id="conclusoesCard" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;flex-wrap:wrap;gap:8px;">
+      <p class="card-title" style="margin-bottom:0;">💡 Conclusões do mês</p>
+      <div id="conclusaoMesChips" class="conclusao-mes-chips" style="margin-bottom:0;"></div>
+    </div>
+    <div id="conclusaoLista" class="conclusao-lista">
+      <p class="conclusao-empty">Sem dados para mostrar</p>
     </div>
   </div>
 
@@ -1683,6 +1707,165 @@ function renderResumo(data) {
   }
 }
 
+// ─── Conclusões Mensais ───────────────────────────────────────────────────────
+let activeConclusaoMes = null; // null = usa activeTableMonth
+
+function renderConclusaoMesChips() {
+  const el = document.getElementById('conclusaoMesChips');
+  if (!el) return;
+  const meses = loadedMonths.map(m => m.key).sort();
+  if (meses.length <= 1) { el.innerHTML = ''; return; }
+  el.innerHTML = meses.map(m => {
+    const [ano, mo] = m.split('-');
+    const label = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mo)-1] + ' ' + ano.slice(2);
+    const active = (activeConclusaoMes || activeTableMonth) === m ? 'active' : '';
+    return `<span class="conclusao-mes-chip ${active}" onclick="setConclusaoMes('${m}')">${label}</span>`;
+  }).join('');
+}
+
+function setConclusaoMes(mes) {
+  activeConclusaoMes = mes;
+  renderConclusaoMesChips();
+  renderConclusoes(allData);
+}
+
+function renderConclusoes(data) {
+  const card = document.getElementById('conclusoesCard');
+  const lista = document.getElementById('conclusaoLista');
+  if (!lista) return;
+
+  // Determina o mês a analisar
+  const mesFiltro = activeConclusaoMes || activeTableMonth;
+  const meses = [...new Set(data.map(r => r.date.slice(0,7)))].sort();
+  const mesAlvo = mesFiltro !== 'all' ? mesFiltro : meses[meses.length - 1];
+
+  if (!mesAlvo) { if (card) card.style.display = 'none'; return; }
+  if (card) card.style.display = '';
+
+  // Actualiza chips quando há dados
+  renderConclusaoMesChips();
+
+  // Dados do mês alvo
+  const dadosMes = data.filter(r => r.date.slice(0,7) === mesAlvo);
+  const despMes = dadosMes.filter(r => r.amount < 0);
+  if (!despMes.length) {
+    lista.innerHTML = '<p class="conclusao-empty">Sem despesas registadas neste mês.</p>';
+    return;
+  }
+
+  // Agrega gastos por categoria (excluindo Transferências do denominador)
+  const catTotais = {};
+  despMes.forEach(r => {
+    catTotais[r.cat] = (catTotais[r.cat] || 0) + Math.abs(r.amount);
+  });
+  const catsSorted = Object.entries(catTotais).sort((a,b) => b[1] - a[1]);
+  const catsExclDenom = ['Transferências'];
+  const totalGastos = catsSorted.filter(([c]) => !catsExclDenom.includes(c)).reduce((s,[,v]) => s+v, 0);
+
+  // Rendimento do mês
+  const rendMes = dadosMes.filter(r => r.amount > 0 && r.cat === 'Rendimentos').reduce((s,r) => s+r.amount, 0);
+
+  // Dados do mês anterior
+  const idxMes = meses.indexOf(mesAlvo);
+  const mesAnt = idxMes > 0 ? meses[idxMes - 1] : null;
+  const dadosAnt = mesAnt ? data.filter(r => r.date.slice(0,7) === mesAnt) : [];
+  const catTotaisAnt = {};
+  dadosAnt.filter(r => r.amount < 0).forEach(r => {
+    catTotaisAnt[r.cat] = (catTotaisAnt[r.cat] || 0) + Math.abs(r.amount);
+  });
+
+  // Últimos 3 meses (sem o atual)
+  const ultimos3 = meses.slice(Math.max(0, idxMes - 3), idxMes);
+
+  // Nome do mês
+  const nomeMes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][parseInt(mesAlvo.split('-')[1])-1];
+  const nomeMesAnt = mesAnt ? ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][parseInt(mesAnt.split('-')[1])-1] : null;
+
+  const itens = [];
+
+  // 1. Maior e 2ª maior despesa
+  const top = catsSorted.filter(([c]) => !catsExclDenom.includes(c));
+  if (top[0]) {
+    itens.push({ icon: '🥇', text: `<strong>${top[0][0]}</strong> foi a maior despesa de ${nomeMes} (${fmtAbs(top[0][1])} €).` });
+  }
+  if (top[1]) {
+    itens.push({ icon: '🥈', text: `<strong>${top[1][0]}</strong> foi a segunda maior despesa (${fmtAbs(top[1][1])} €).` });
+  }
+
+  // 2. Percentagem das duas maiores no total
+  if (top[0] && top[1] && totalGastos > 0) {
+    const pct = Math.round((top[0][1] + top[1][1]) / totalGastos * 100);
+    itens.push({ icon: '📊', text: `<strong>${top[0][0]}</strong> e <strong>${top[1][0]}</strong> representam <strong>${pct}%</strong> dos gastos totais.` });
+  }
+
+  // 3. Variações face ao mês anterior
+  if (mesAnt) {
+    catsSorted.filter(([c]) => !catsExclDenom.includes(c)).forEach(([cat, val]) => {
+      const valAnt = catTotaisAnt[cat] || 0;
+      if (valAnt > 0) {
+        const variacao = ((val - valAnt) / valAnt) * 100;
+        if (Math.abs(variacao) >= 20) {
+          if (variacao > 0) {
+            itens.push({ icon: '🔴', text: `<strong>${cat}</strong> aumentou <strong>${Math.round(variacao)}%</strong> face a ${nomeMesAnt} (${fmtAbs(valAnt)} € → ${fmtAbs(val)} €).` });
+          } else {
+            itens.push({ icon: '🟢', text: `<strong>${cat}</strong> diminuiu <strong>${Math.round(Math.abs(variacao))}%</strong> face a ${nomeMesAnt} (${fmtAbs(valAnt)} € → ${fmtAbs(val)} €).` });
+          }
+        }
+      } else if (val > 0 && valAnt === 0 && mesAnt) {
+        itens.push({ icon: '🆕', text: `<strong>${cat}</strong> teve gastos pela primeira vez este mês (${fmtAbs(val)} €).` });
+      }
+    });
+    // Categorias que desapareceram
+    Object.entries(catTotaisAnt).filter(([c]) => !catsExclDenom.includes(c)).forEach(([cat, valAnt]) => {
+      if (!catTotais[cat] && valAnt > 0) {
+        itens.push({ icon: '🟢', text: `<strong>${cat}</strong> não teve gastos este mês (poupança de ${fmtAbs(valAnt)} € face a ${nomeMesAnt}).` });
+      }
+    });
+  }
+
+  // 4. Comparação com média dos últimos 3 meses
+  if (ultimos3.length >= 2) {
+    catsSorted.filter(([c]) => !catsExclDenom.includes(c)).slice(0, 5).forEach(([cat, val]) => {
+      const valsAnt = ultimos3.map(m => {
+        const d = data.filter(r => r.date.slice(0,7) === m && r.amount < 0 && r.cat === cat);
+        return d.reduce((s,r) => s + Math.abs(r.amount), 0);
+      }).filter(v => v > 0);
+      if (valsAnt.length >= 2) {
+        const media = valsAnt.reduce((s,v)=>s+v,0) / valsAnt.length;
+        const diff = val - media;
+        const diffPct = (diff / media) * 100;
+        if (Math.abs(diffPct) < 15) {
+          itens.push({ icon: '🟡', text: `<strong>${cat}</strong> manteve-se próximo da média dos últimos ${valsAnt.length} meses (média: ${fmtAbs(media)} €, atual: ${fmtAbs(val)} €).` });
+        }
+      }
+    });
+  }
+
+  // 5. Taxa de poupança
+  if (rendMes > 0) {
+    const taxaPoupanca = ((rendMes - totalGastos) / rendMes) * 100;
+    const metaPoupanca = budgetRendimento > 0 && activeStrategy !== 'custom'
+      ? (STRATEGIES[activeStrategy]?.groups?.poupanca || 0.20) * 100
+      : 20; // default 20%
+    if (taxaPoupanca < 0) {
+      itens.push({ icon: '⚠️', text: `Os gastos ultrapassaram o rendimento em <strong>${fmtAbs(Math.abs(rendMes - totalGastos))} €</strong> — mês com saldo negativo.` });
+    } else if (taxaPoupanca < metaPoupanca) {
+      itens.push({ icon: '⚠️', text: `Taxa de poupança de <strong>${Math.round(taxaPoupanca)}%</strong> — abaixo da meta de ${Math.round(metaPoupanca)}% (poupaste ${fmtAbs(rendMes - totalGastos)} €).` });
+    } else {
+      itens.push({ icon: '✅', text: `Taxa de poupança de <strong>${Math.round(taxaPoupanca)}%</strong> — acima da meta de ${Math.round(metaPoupanca)}% (poupaste ${fmtAbs(rendMes - totalGastos)} €).` });
+    }
+  }
+
+  if (!itens.length) {
+    lista.innerHTML = '<p class="conclusao-empty">Sem dados suficientes para gerar conclusões.</p>';
+    return;
+  }
+
+  lista.innerHTML = itens.map(i =>
+    `<div class="conclusao-item"><span class="conclusao-icon">${i.icon}</span><span class="conclusao-text">${i.text}</span></div>`
+  ).join('');
+}
+
 function renderTable(data) {
   const body = document.getElementById('movBody');
   const sorted = [...data].sort((a, b) => b.date.localeCompare(a.date));
@@ -1727,6 +1910,7 @@ function refresh() {
   renderMonthFilterChips();
   renderPilares(f);
   renderResumo(f);
+  renderConclusoes(allData);
   renderTable(f);
   const budgetPainel = document.getElementById('budgetPainel');
   if (budgetPainel && !budgetPainel.classList.contains('hidden')) {
@@ -2048,6 +2232,7 @@ function renderMonthFilterChips() {
 function setMonthFilter(key) {
   activeTableMonth = key;
   activeResumoMonth = key;
+  activeConclusaoMes = key === 'all' ? null : key;
   activePilarMonth = key === 'all' ? (() => {
     const months = [...new Set(allData.map(r => r.date.slice(0,7)))].sort();
     return months[months.length - 1] || 'all';
