@@ -42,53 +42,6 @@ function renderKPIs(data) {
   document.getElementById('kpiSaiN').textContent = data.filter(r => r.amount < 0).length + ' movimentos';
 }
 
-// ─── Charts ───────────────────────────────────────────────────────────────────
-function renderCharts(data) {
-  const catTotals = {};
-  data.filter(r => r.amount < 0).forEach(r => { catTotals[r.cat] = (catTotals[r.cat] || 0) + Math.abs(r.amount); });
-  const catLabels = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
-  const catVals   = catLabels.map(c => parseFloat(catTotals[c].toFixed(2)));
-  const catCols   = catLabels.map(c => State.CAT_COLORS[State.CATS.indexOf(c)] || '#888');
-
-  if (State.chartDona) State.chartDona.destroy();
-  State.setChartDona(new Chart(document.getElementById('chartDona'), {
-    type: 'doughnut',
-    data: { labels: catLabels, datasets: [{ data: catVals, backgroundColor: catCols, borderWidth: 2, borderColor: '#fff' }] },
-    options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmtAbs(ctx.parsed) } } } }
-  }));
-  document.getElementById('legendDona').innerHTML = catLabels.map((l, i) =>
-    `<span><span class="legend-dot" style="background:${catCols[i]}"></span>${l}</span>`).join('');
-
-  const months = {};
-  data.forEach(r => {
-    const m = r.date.slice(0, 7);
-    if (!months[m]) months[m] = { ent: 0, sai: 0 };
-    if (r.amount > 0) months[m].ent += r.amount; else months[m].sai += Math.abs(r.amount);
-  });
-  const mLabels = Object.keys(months).sort();
-  const mFmt = mLabels.map(m => { const [, mo] = m.split('-'); return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mo)-1]; });
-  if (State.chartBar) State.chartBar.destroy();
-  State.setChartBar(new Chart(document.getElementById('chartBar'), {
-    type: 'bar',
-    data: { labels: mFmt, datasets: [
-      { label: 'Entradas', data: mLabels.map(m => parseFloat(months[m].ent.toFixed(2))), backgroundColor: '#1D9E75' },
-      { label: 'Saídas',   data: mLabels.map(m => parseFloat(months[m].sai.toFixed(2))), backgroundColor: '#D85A30' }
-    ]},
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8680', autoSkip: false, maxRotation: 0, font: { size: 11 } } }, y: { ticks: { color: '#8a8680', font: { size: 11 }, callback: v => v + '€' } } } }
-  }));
-
-  const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
-  let running = 0;
-  const lineL = [], lineV = [];
-  sorted.forEach(r => { running += r.amount; lineL.push(r.date.slice(5).replace('-', '/')); lineV.push(parseFloat(running.toFixed(2))); });
-  if (State.chartLine) State.chartLine.destroy();
-  State.setChartLine(new Chart(document.getElementById('chartLine'), {
-    type: 'line',
-    data: { labels: lineL, datasets: [{ data: lineV, borderColor: '#1a3a2a', backgroundColor: 'rgba(26,58,42,0.07)', fill: true, tension: 0.35, pointRadius: 2, borderWidth: 2 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a8680', autoSkip: true, maxTicksLimit: 8, font: { size: 11 } } }, y: { ticks: { color: '#8a8680', font: { size: 11 }, callback: v => v + '€' } } } }
-  }));
-}
-
 // ─── Tabela ───────────────────────────────────────────────────────────────────
 function renderTable(data) {
   const body   = document.getElementById('movBody');
@@ -713,7 +666,6 @@ window._removeMonth = function(key) {
 function refresh() {
   const f = getFiltered();
   renderKPIs(f);
-  renderCharts(f);
   renderMonthFilterChips();
   renderPilares(f);
   renderResumo(f);
@@ -749,9 +701,6 @@ function doReset() {
   document.getElementById('monthsChips').innerHTML = '';
   const mfc = document.getElementById('monthFilterChips'); if (mfc) mfc.innerHTML = '';
   document.getElementById('movBody').innerHTML = '<tr><td colspan="4"><div class="empty-state">Sem dados<p>Carrega um extrato CSV ou usa o demo.</p></div></td></tr>';
-  if (State.chartDona)    { State.chartDona.destroy();    State.setChartDona(null); }
-  if (State.chartBar)     { State.chartBar.destroy();     State.setChartBar(null); }
-  if (State.chartLine)    { State.chartLine.destroy();    State.setChartLine(null); }
   if (State.chartPilares) { State.chartPilares.destroy(); State.setChartPilares(null); }
   document.getElementById('fileInput').value = '';
 }
