@@ -532,6 +532,10 @@ tr:hover td { background: var(--surface2); }
   flex-shrink: 0;
   user-select: none;
 }
+.info-tip.info-tip-blue {
+  border-color: var(--blue);
+  color: var(--blue);
+}
 .info-tip .info-tip-bubble {
   display: none;
   position: absolute;
