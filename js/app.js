@@ -40,6 +40,69 @@ function renderKPIs(data) {
   document.getElementById('kpiEntN').textContent = data.filter(r => r.amount > 0 && r.cat === 'Rendimentos').length + ' movimentos';
   document.getElementById('kpiSai').textContent = '-' + fmtAbs(Math.max(0, saiLiq));
   document.getElementById('kpiSaiN').textContent = data.filter(r => r.amount < 0).length + ' movimentos';
+
+  const fluxo = ent - Math.max(0, saiLiq);
+  const kpiFluxoEl = document.getElementById('kpiFluxo');
+  kpiFluxoEl.textContent = (fluxo >= 0 ? '+' : '-') + fmtAbs(fluxo);
+  kpiFluxoEl.classList.remove('pos', 'neg', 'neu');
+  kpiFluxoEl.classList.add(fluxo >= 0 ? 'pos' : 'neg');
+}
+
+// ─── Resumo de Pilares (quadrados de topo) ─────────────────────────────────────
+function renderPilaresResumo(data) {
+  const elRend = document.getElementById('pilaresResumoRend');
+  const elSai  = document.getElementById('pilaresResumoSai');
+  if (!elRend || !elSai) return;
+
+  const hasPilarCats = State.PILARES.some(p => p.cats.length > 0);
+  if (!data.length || !hasPilarCats) {
+    elRend.classList.add('hidden');
+    elSai.classList.add('hidden');
+    return;
+  }
+
+  const gastoLiquidoCat = cat => {
+    const saidas   = data.filter(r => r.amount < 0 && r.cat === cat).reduce((s,r) => s + Math.abs(r.amount), 0);
+    const entradas = data.filter(r => r.amount > 0 && r.cat === cat && r.cat !== 'Rendimentos').reduce((s,r) => s + r.amount, 0);
+    return Math.max(0, saidas - entradas);
+  };
+
+  const totalRend = data.filter(r => r.amount > 0 && r.cat === 'Rendimentos').reduce((s, r) => s + r.amount, 0);
+  const totalSai  = State.PILARES.flatMap(p => p.cats).reduce((s, cat) => s + gastoLiquidoCat(cat), 0);
+
+  const porPilar = State.PILARES.map(p => ({
+    p, total: p.cats.reduce((s, cat) => s + gastoLiquidoCat(cat), 0)
+  }));
+
+  // Linha % do rendimento
+  elRend.classList.remove('hidden');
+  elRend.innerHTML = porPilar.map(({p, total}) => {
+    const pct = totalRend > 0 ? (total / totalRend * 100).toFixed(1) : '0.0';
+    return `<div class="kpi">
+      <div class="kpi-label">${p.emoji} ${p.nome}</div>
+      <div class="kpi-val neu" style="color:${p.color};">${pct}%</div>
+      <div class="kpi-sub">do rendimento</div>
+    </div>`;
+  }).join('') + `<div class="kpi">
+      <div class="kpi-label">Total</div>
+      <div class="kpi-val neu">${(totalRend > 0 ? (totalSai / totalRend * 100).toFixed(1) : '0.0')}%</div>
+      <div class="kpi-sub">${fmtAbs(totalSai)} alocados</div>
+    </div>`;
+
+  // Linha % das saídas + valor €
+  elSai.classList.remove('hidden');
+  elSai.innerHTML = porPilar.map(({p, total}) => {
+    const pct = totalSai > 0 ? (total / totalSai * 100).toFixed(1) : '0.0';
+    return `<div class="kpi">
+      <div class="kpi-label">${p.emoji} ${p.nome}</div>
+      <div class="kpi-val neu" style="color:${p.color};">${pct}%</div>
+      <div class="kpi-sub">${fmtAbs(total)} · das saídas</div>
+    </div>`;
+  }).join('') + `<div class="kpi">
+      <div class="kpi-label">Total saídas</div>
+      <div class="kpi-val neg">${fmtAbs(totalSai)}</div>
+      <div class="kpi-sub">100,0%</div>
+    </div>`;
 }
 
 // ─── Tabela ───────────────────────────────────────────────────────────────────
@@ -673,6 +736,7 @@ window._removeMonth = function(key) {
 function refresh() {
   const f = getFiltered();
   renderKPIs(f);
+  renderPilaresResumo(f);
   renderMonthFilterChips();
   renderPilares(f);
   renderResumo(f);
