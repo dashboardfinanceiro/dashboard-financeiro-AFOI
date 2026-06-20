@@ -138,6 +138,22 @@ function renderResumo(data) {
       : buildResumoRows(entCats, entKeys, entMax, false)
         + `<tr class="total-row"><td colspan="2"><strong>Total</strong></td><td class="n-cell">${resumoData.filter(r=>r.amount>0&&r.cat==='Rendimentos').length}</td><td class="val-cell pos"><strong>+${fmtAbs(entTotal)}</strong></td></tr>`;
   }
+
+  const saiCats = {};
+  resumoData.filter(r => r.amount < 0).forEach(r => {
+    if (!saiCats[r.cat]) saiCats[r.cat] = { total: 0, n: 0, movs: [] };
+    saiCats[r.cat].total += Math.abs(r.amount); saiCats[r.cat].n++; saiCats[r.cat].movs.push(r);
+  });
+  const saiKeys  = Object.keys(saiCats).sort((a,b) => saiCats[b].total - saiCats[a].total);
+  const saiMax   = saiKeys.length ? saiCats[saiKeys[0]].total : 1;
+  const saiTotal = saiKeys.reduce((s,k) => s + saiCats[k].total, 0);
+  const saiBody  = document.getElementById('resumoSaiBody');
+  if (saiBody) {
+    saiBody.innerHTML = !saiKeys.length
+      ? '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;font-size:12px;">Sem despesas</td></tr>'
+      : buildResumoRows(saiCats, saiKeys, saiMax, true)
+        + `<tr class="total-row"><td colspan="2"><strong>Total</strong></td><td class="n-cell">${resumoData.filter(r=>r.amount<0).length}</td><td class="val-cell neg"><strong>-${fmtAbs(saiTotal)}</strong></td></tr>`;
+  }
 }
 
 // ─── Pilares ──────────────────────────────────────────────────────────────────
@@ -157,13 +173,11 @@ function renderPilaresCards(data) {
     return Math.max(0, saidas - entradas);
   };
   const catsDePilares = State.PILARES.flatMap(p => p.cats);
-  const catsComSaidas = [...new Set(data.filter(r => r.amount < 0).map(r => r.cat))];
-  const catsSemPilar  = catsComSaidas.filter(c => !catsDePilares.includes(c) && c !== 'Rendimentos');
-  const totalSai = [...catsDePilares, ...catsSemPilar].reduce((s, cat) => s + gastoLiquidoCat(cat), 0);
+  const totalSai = catsDePilares.reduce((s, cat) => s + gastoLiquidoCat(cat), 0);
   const cardsEl  = document.getElementById('pilaresCards');
   if (!cardsEl) return;
 
-  const pilaresHtml = State.PILARES.map(p => {
+  cardsEl.innerHTML = State.PILARES.map(p => {
     const total    = p.cats.reduce((s, cat) => s + gastoLiquidoCat(cat), 0);
     const pctPilar = totalSai > 0 ? (total / totalSai * 100).toFixed(1) : '0.0';
     const catRows  = p.cats.map(cat => {
@@ -216,63 +230,6 @@ function renderPilaresCards(data) {
         : `<div style="padding:0.75rem 1.25rem;font-size:12px;color:var(--muted);font-style:italic;">Nenhuma categoria — usa ⚙️ Configurar para atribuir</div>`}
     </div>`;
   }).join('');
-
-  // Card para categorias sem pilar atribuído
-  let semPilarHtml = '';
-  if (catsSemPilar.length > 0) {
-    const color = '#8a8680';
-    const totalSemPilar = catsSemPilar.reduce((s, cat) => s + gastoLiquidoCat(cat), 0);
-    const pctSemPilar   = totalSai > 0 ? (totalSemPilar / totalSai * 100).toFixed(1) : '0.0';
-    const catRows = catsSemPilar.map(cat => {
-      const gasto = gastoLiquidoCat(cat);
-      if (gasto === 0) return '';
-      const pctCat = totalSemPilar > 0 ? (gasto / totalSemPilar * 100).toFixed(1) : '0.0';
-      const catIdx = State.CATS.indexOf(cat);
-      const catColor = State.CAT_COLORS[catIdx] || color;
-      const movsId = 'catMovs_sempilar_' + cat.replace(/\s/g,'_');
-      const catMovs = data.filter(r => r.cat === cat).sort((a,b) => b.date.localeCompare(a.date));
-      const movsHtml = catMovs.map(r => {
-        const isReembolso = r.amount > 0;
-        const cor   = isReembolso ? 'var(--green)' : 'var(--red)';
-        const sinal = isReembolso ? '+' : '-';
-        const label = isReembolso ? ' <span style="font-size:9px;background:var(--green);color:#fff;border-radius:3px;padding:1px 4px;vertical-align:middle;">reembolso</span>' : '';
-        return `<tr style="border-top:1px solid var(--border);">
-          <td style="padding:4px 8px 4px 24px;font-size:11px;color:var(--muted);">${r.date}</td>
-          <td style="padding:4px 8px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">${r.desc}${label}</td>
-          <td style="padding:4px 8px;font-size:11px;font-family:'DM Mono',monospace;text-align:right;color:${cor};">${sinal}${fmtAbs(Math.abs(r.amount))}</td>
-        </tr>`;
-      }).join('');
-      return `
-        <tr onclick="window._toggleCatMovs('${movsId}')" style="cursor:pointer;border-top:1px solid var(--border);">
-          <td style="padding:8px 0;display:flex;align-items:center;gap:8px;">
-            <span style="width:8px;height:8px;border-radius:2px;background:${catColor};flex-shrink:0;display:inline-block;"></span>
-            <span style="font-size:13px;">${cat}</span>
-            <span class="cat-arrow" style="font-size:10px;color:var(--muted);">▸</span>
-          </td>
-          <td style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;text-align:right;padding:8px 12px;white-space:nowrap;">${pctCat}%</td>
-          <td style="font-size:13px;font-family:'DM Mono',monospace;text-align:right;padding:8px 0;color:var(--red);white-space:nowrap;">-${fmtAbs(gasto)}</td>
-        </tr>
-        <tr id="${movsId}" style="display:none;"><td colspan="3" style="padding:0 0 4px 0;background:var(--surface2);">
-          <table style="width:100%;border-collapse:collapse;">${movsHtml}</table>
-        </td></tr>`;
-    }).join('');
-    semPilarHtml = `<div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:0.75rem;opacity:0.8;">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:0.9rem 1.25rem;background:${color}12;border-bottom:1px solid ${color}25;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:1.3rem;">⬜</span>
-          <span style="font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:${color};">Sem pilar</span>
-          <span style="font-size:11px;color:var(--muted);font-style:italic;">atribui no ⚙️ Configurar</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:16px;">
-          <span style="font-size:13px;color:var(--muted);font-family:'DM Mono',monospace;">${pctSemPilar}% das saídas</span>
-          <span style="font-size:1.2rem;font-weight:800;font-family:'DM Mono',monospace;color:var(--muted);">-${fmtAbs(totalSemPilar)}</span>
-        </div>
-      </div>
-      <div style="padding:0 1.25rem 0.5rem;"><table style="width:100%;border-collapse:collapse;"><tbody>${catRows}</tbody></table></div>
-    </div>`;
-  }
-
-  cardsEl.innerHTML = pilaresHtml + semPilarHtml;
 }
 
 window._toggleCatMovs = function(id) {
@@ -444,19 +401,22 @@ window._deleteCategory = function(cat) {
   if (inUse > 0) msg += `\n\n${inUse} movimento(s) serão reassociados a «Diversos».`;
   if (inRules > 0) msg += `\n${inRules} regra(s) que usam esta categoria também serão removidas.`;
   if (!confirm(msg)) return;
-  State.allData.forEach(r => { if (r.cat === cat) { r.cat = 'Diversos'; r.manual = false; } });
+  State.allData.forEach(r => { if (r.cat === cat) { r.cat = 'Diversos'; r.manual = true; } });
   State.setUserRules(State.userRules.filter(r => r.cat !== cat));
   State.setCats(State.CATS.filter(c => c !== cat));
   if (!State.CUSTOM_CATS.includes(cat)) { if (!State.DELETED_BASE_CATS.includes(cat)) State.DELETED_BASE_CATS.push(cat); }
   State.setCustomCats(State.CUSTOM_CATS.filter(c => c !== cat));
   State.PILARES.forEach(p => { p.cats = p.cats.filter(c => c !== cat); });
-  Storage.savePilares(); Storage.saveRules(); Storage.save();
+  delete State.budgetLimits[cat];
+  Storage.savePilares(); Storage.saveRules(); Storage.saveBudget(); Storage.save();
   if (Storage.gAccessToken) Storage.scheduleDriveSave();
   refreshCatSelects(); renderRulesList(); renderCatChips(); refresh();
 };
 
 function reapplyCategories() {
-  State.allData.forEach(r => { if (!r.manual) r.cat = autoCategory(r.desc); });
+  State.allData.forEach(r => {
+    if (!r.manual || !State.CATS.includes(r.cat)) r.cat = autoCategory(r.desc);
+  });
   Storage.save();
   if (Storage.gAccessToken) Storage.scheduleDriveSave();
   refresh();
@@ -522,6 +482,142 @@ window._togglePilaresConfig = function() {
   else { cfg.classList.add('hidden'); btn.textContent='⚙️ Configurar'; }
 };
 
+// ─── Budget ───────────────────────────────────────────────────────────────────
+function getRendimentoEfetivo() {
+  const filtered = getFilteredData();
+  const total = filtered.filter(r => r.amount > 0 && r.cat === 'Rendimentos').reduce((s,r) => s+r.amount, 0);
+  return total > 0 ? total : State.budgetRendimento;
+}
+
+function updateRendimentoLabel() {
+  const el = document.getElementById('rendimentoEfetivoLabel');
+  if (!el) return;
+  const rend = getRendimentoEfetivo();
+  el.textContent = rend > 0 ? fmt(rend).replace('+','') + ' €' : '—';
+}
+
+function updateBudgetOverview() {
+  const strat = State.STRATEGIES[State.activeStrategy];
+  const rend  = getRendimentoEfetivo();
+  updateRendimentoLabel();
+  const ovEl = document.getElementById('budgetOverview');
+  if (!ovEl) return;
+  if (!strat.groups || !rend) { ovEl.style.display='none'; return; }
+  ovEl.style.display = 'grid';
+  const filtered = getFilteredData();
+  const gastos = { necessidades: 0, desejos: 0, poupanca: 0 };
+  filtered.filter(r => r.amount < 0 && r.cat !== 'Transferências').forEach(r => {
+    const pilar = State.CAT_PILAR[r.cat] || 'desejos';
+    if (pilar) gastos[pilar] += Math.abs(r.amount);
+  });
+  [{ id:'Necessidades', key:'necessidades' }, { id:'Desejos', key:'desejos' }, { id:'Poupanca', key:'poupanca' }].forEach(({id,key}) => {
+    const limite = rend * (strat.groups[key] || 0);
+    const gasto  = gastos[key];
+    const pct    = strat.groups[key] * 100;
+    const valEl  = document.getElementById('ov'+id);
+    const subEl  = document.getElementById('ov'+id+'Pct');
+    if (valEl) {
+      const restante = limite - gasto;
+      valEl.textContent = (restante>=0?'+':'')+restante.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,'.')+' €';
+      valEl.className = 'budget-overview-val ' + (restante>=0 ? 'pos' : 'neg');
+    }
+    if (subEl) subEl.textContent = pct+'% do rendimento · '+fmt(limite).replace('+','')+' limite';
+  });
+}
+
+function renderBudgetCats() {
+  const grid = document.getElementById('budgetCatsGrid');
+  if (!grid) return;
+  const filtered = getFilteredData();
+  const gastosCat = {};
+  filtered.filter(r => r.amount < 0).forEach(r => { gastosCat[r.cat] = (gastosCat[r.cat]||0) + Math.abs(r.amount); });
+  grid.innerHTML = State.CATS.filter(c => c !== 'Rendimentos').map(cat => {
+    const color    = State.CAT_COLORS[State.CATS.indexOf(cat)] || '#888';
+    const limite   = State.budgetLimits[cat] || 0;
+    const gasto    = gastosCat[cat] || 0;
+    const pct      = limite > 0 ? Math.min((gasto/limite)*100, 100) : 0;
+    const over     = gasto > limite && limite > 0;
+    const barColor = over ? 'var(--red)' : (pct > 80 ? 'var(--gold)' : color);
+    const restante = limite - gasto;
+    let status = '';
+    if (limite > 0) {
+      if (over)      status = `<span class="neg">▲ ${Math.abs(restante).toFixed(2).replace('.',',')} € acima</span>`;
+      else if (pct>=80) status = `<span style="color:var(--gold)">⚠ ${restante.toFixed(2).replace('.',',')} € restantes</span>`;
+      else           status = `<span class="pos">✓ ${restante.toFixed(2).replace('.',',')} € restantes</span>`;
+    } else {
+      status = gasto > 0
+        ? `<span style="color:var(--muted)">${gasto.toFixed(2).replace('.',',')} € gastos · sem limite</span>`
+        : `<span style="color:var(--muted)">sem limite definido</span>`;
+    }
+    return `<div class="budget-cat-item">
+      <div class="budget-cat-header">
+        <span class="budget-cat-name"><span class="budget-cat-dot" style="background:${color};"></span>${cat}</span>
+        <div class="budget-input-wrap">
+          <input type="number" class="budget-input" data-cat="${cat}" value="${limite||''}" placeholder="—" min="0" step="10"
+            oninput="window._onBudgetCatInput(this)" onchange="window._saveBudgetUI()"/>
+          <span class="budget-input-sym">€</span>
+        </div>
+      </div>
+      <div class="budget-bar-wrap"><div class="budget-bar-fill" style="width:${pct}%;background:${barColor};"></div></div>
+      <div class="budget-status">${status}</div>
+    </div>`;
+  }).join('');
+}
+
+window._onBudgetCatInput = function(input) {
+  State.budgetLimits[input.dataset.cat] = parseFloat(input.value) || 0;
+  State.setActiveStrategy('custom');
+  document.querySelectorAll('.budget-strategy-tab').forEach(t => t.classList.toggle('active', t.dataset.strategy==='custom'));
+  window._saveBudgetUI();
+};
+
+window._saveBudgetUI = function() {
+  Storage.saveBudget();
+  renderBudgetCats();
+  updateBudgetOverview();
+};
+
+window._toggleBudget = function() {
+  const p = document.getElementById('budgetPainel');
+  const btn = document.getElementById('budgetToggleBtn');
+  const hidden = p.classList.toggle('hidden');
+  btn.textContent = hidden ? 'Mostrar objetivos' : 'Esconder objetivos';
+  if (!hidden) renderBudgetCats();
+};
+
+window._applyStrategy = function(strategy) {
+  State.setActiveStrategy(strategy);
+  document.querySelectorAll('.budget-strategy-tab').forEach(t => t.classList.toggle('active', t.dataset.strategy===strategy));
+  const desc = document.getElementById('budgetStrategyDesc');
+  if (desc) desc.textContent = State.STRATEGIES[strategy]?.label || '';
+  const rend  = State.budgetRendimento;
+  const strat = State.STRATEGIES[strategy];
+  if (strat.groups && rend > 0) {
+    State.CATS.forEach(cat => {
+      if (cat === 'Rendimentos') return;
+      const pilar = State.CAT_PILAR[cat] || 'desejos';
+      const pct   = strat.groups[pilar] || 0;
+      const catsNoPilar = State.CATS.filter(c => (State.CAT_PILAR[c]||'desejos')===pilar && c!=='Rendimentos');
+      State.budgetLimits[cat] = Math.round((rend*pct)/catsNoPilar.length);
+    });
+  }
+  window._saveBudgetUI();
+};
+
+window._onBudgetRendimentoChange = function() {
+  State.setBudgetRendimento(parseFloat(document.getElementById('budgetRendimento').value) || 0);
+  updateBudgetOverview();
+};
+
+window._usarEntradasComoRendimento = function() {
+  const filtered  = getFilteredData();
+  const total = filtered.filter(r => r.amount > 0 && r.cat !== 'Transferências').reduce((s,r) => s+r.amount, 0);
+  if (!total) { alert('Sem entradas no período atual.'); return; }
+  State.setBudgetRendimento(Math.round(total));
+  document.getElementById('budgetRendimento').value = State.budgetRendimento;
+  window._saveBudgetUI(); updateBudgetOverview();
+};
+
 // ─── Meses UI ─────────────────────────────────────────────────────────────────
 function renderMonthFilterChips() {
   const el  = document.getElementById('monthFilterChips');
@@ -576,6 +672,10 @@ function refresh() {
   renderPilares(f);
   renderResumo(f);
   renderTable(f);
+  const budgetPainel = document.getElementById('budgetPainel');
+  if (budgetPainel && !budgetPainel.classList.contains('hidden')) {
+    updateRendimentoLabel(); renderBudgetCats(); updateBudgetOverview();
+  }
 }
 
 function showDash(label, detail, isBankFmt) {
@@ -788,6 +888,7 @@ window.addEventListener('load', () => {
         Storage.loadRules();
         refreshCatSelects();
         renderRulesList();
+        Storage.loadBudget();
         Storage.driveLoad(uiCallbacks).then(() => {
           updateMonthsUI();
         });

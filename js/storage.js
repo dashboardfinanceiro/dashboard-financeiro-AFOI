@@ -65,7 +65,11 @@ export function load() {
         }));
       }
       if (State.allData.length) {
-        State.allData.forEach(r => { if (!r.manual) r.cat = autoCategory(r.desc); });
+        State.allData.forEach(r => {
+          // migrar categorias eliminadas (ex: Restaurantes → Restauração)
+          if (!State.CATS.includes(r.cat)) { r.cat = autoCategory(r.desc); r.manual = false; }
+          else if (!r.manual) r.cat = autoCategory(r.desc);
+        });
         return true;
       }
     }
@@ -183,7 +187,10 @@ export function restorePayload(p, uiCallbacks) {
   saveRules();
   if (p.budget) loadBudget(p.budget);
   else loadBudget();
-  State.allData.forEach(r => { if (!r.manual) r.cat = autoCategory(r.desc); });
+  State.allData.forEach(r => {
+    if (!State.CATS.includes(r.cat)) { r.cat = autoCategory(r.desc); r.manual = false; }
+    else if (!r.manual) r.cat = autoCategory(r.desc);
+  });
   save();
   // Callbacks de UI (injetados pelo app.js para evitar dependência circular)
   if (uiCallbacks) {
