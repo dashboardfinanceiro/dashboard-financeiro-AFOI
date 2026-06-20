@@ -84,7 +84,7 @@ function renderPilaresResumo(data) {
       <div class="kpi-sub">do rendimento</div>
     </div>`;
   }).join('') + `<div class="kpi">
-      <div class="kpi-label">Total</div>
+      <div class="kpi-label">Taxa de Consumo</div>
       <div class="kpi-val neu">${(totalRend > 0 ? (totalSai / totalRend * 100).toFixed(1) : '0.0')}%</div>
       <div class="kpi-sub">${fmtAbs(totalSai)} alocados</div>
     </div>`;
