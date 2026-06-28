@@ -755,10 +755,8 @@ window._setMonthFilter = function(key) {
 };
 
 function updateMonthsUI() {
-  const listEl  = document.getElementById('monthsList');
   const chipsEl = document.getElementById('monthsChips');
-  if (!State.loadedMonths.length) { listEl.classList.add('hidden'); return; }
-  listEl.classList.remove('hidden');
+  if (!chipsEl) return;
   chipsEl.innerHTML = State.loadedMonths.map(m => `
     <span style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px 4px 12px;font-size:12px;font-family:'DM Mono',monospace;">
       ${m.label} <span style="color:var(--muted);font-size:11px;">(${m.count})</span>
@@ -799,9 +797,11 @@ function refresh() {
 function showDash(label, detail, isBankFmt) {
   const fileInfoTextEl = document.getElementById('fileInfoText');
   if (fileInfoTextEl) fileInfoTextEl.textContent = label + (detail ? ' · ' + detail : '');
+  document.getElementById('uploadExpanded').style.display = 'none';
+  document.getElementById('uploadCompact').classList.remove('hidden');
+  document.getElementById('uploadCompact').style.display = 'flex';
   document.getElementById('fileInfo').classList.remove('hidden');
   document.getElementById('hintBox').classList.add('hidden');
-  document.getElementById('clearBtn').classList.remove('hidden');
   document.getElementById('savedPill').classList.remove('hidden');
   refresh();
 }
@@ -814,12 +814,12 @@ function doReset() {
   const si  = document.getElementById('searchInput');    if (si)  si.value = '';
   const scb = document.getElementById('searchClearBtn'); if (scb) scb.style.display = 'none';
   const src = document.getElementById('searchResultCount'); if (src) src.style.display = 'none';
+  document.getElementById('uploadExpanded').style.display = '';
+  document.getElementById('uploadCompact').classList.add('hidden');
   document.getElementById('fileInfo').classList.add('hidden');
   document.getElementById('hintBox').classList.remove('hidden');
-  document.getElementById('clearBtn').classList.add('hidden');
   document.getElementById('savedPill').classList.add('hidden');
-  document.getElementById('monthsList').classList.add('hidden');
-  document.getElementById('monthsChips').innerHTML = '';
+  const mc = document.getElementById('monthsChips'); if (mc) mc.innerHTML = '';
   const mfc = document.getElementById('monthFilterChips'); if (mfc) mfc.innerHTML = '';
   document.getElementById('movBody').innerHTML = '<tr><td colspan="5"><div class="empty-state">Sem dados<p>Carrega um extrato CSV ou usa o demo.</p></div></td></tr>';
   if (State.chartPilares) { State.chartPilares.destroy(); State.setChartPilares(null); }
@@ -953,8 +953,22 @@ window.addEventListener('load', () => {
     });
   });
 
-  // Upload
+  // Upload — input na vista compacta
   document.getElementById('fileInput').addEventListener('change', e => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    if (!Storage.gAccessToken) {
+      if (!confirm('⚠️ Não estás com sessão iniciada.\n\nSem login, os dados NÃO ficam guardados na tua conta Google — perdes-os ao fechar o separador.\n\nQueres continuar mesmo assim?')) {
+        e.target.value = ''; return;
+      }
+    }
+    let i = 0;
+    function next() { if (i < files.length) handleFile(files[i++], i===files.length, next); }
+    next(); e.target.value = '';
+  });
+
+  // Upload — input na vista expandida
+  document.getElementById('fileInputExpanded').addEventListener('change', e => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     if (!Storage.gAccessToken) {
@@ -979,7 +993,7 @@ window.addEventListener('load', () => {
     const files = Array.from(e.dataTransfer.files).filter(f => f.name.match(/\.(csv|txt)$/i));
     files.forEach((f, idx) => handleFile(f, idx===files.length-1));
   });
-  dz.addEventListener('click', () => document.getElementById('fileInput').click());
+  dz.addEventListener('click', () => document.getElementById('fileInputExpanded').click());
 
   // Limpar
   document.getElementById('clearBtn').addEventListener('click', () => {
