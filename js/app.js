@@ -985,50 +985,6 @@ window.addEventListener('load', () => {
     doReset();
   });
 
-  // Demo
-  document.getElementById('demoBtn').addEventListener('click', () => {
-    State.setMetaInfo({ conta: 'DEMO - EUR', dataInicio: '01-03-2026', dataFim: '30-04-2026', saldoFinal: '741,41' });
-    State.setAllData([
-      { date:'2026-04-30', desc:'TRF CXDAPP', amount:500, cat:'Transferências' },
-      { date:'2026-04-30', desc:'CARDINAL GARRIDO UNIP', amount:-17.60, cat:'Habitação' },
-      { date:'2026-04-30', desc:'COMPRAS C.DEB CELEIRO', amount:-10.47, cat:'Supermercado' },
-      { date:'2026-04-30', desc:'COMPRAS C.DEB LASERUM', amount:-29.00, cat:'Saúde' },
-      { date:'2026-04-29', desc:'COMPRAS C.DEB ALDI', amount:-11.79, cat:'Supermercado' },
-      { date:'2026-04-29', desc:'COMPRAS C.DEB KFC', amount:-7.75, cat:'Restaurantes' },
-      { date:'2026-04-28', desc:'AGUAS DE ALENQUER', amount:-22.17, cat:'Habitação' },
-      { date:'2026-04-27', desc:'Conta Condominio', amount:-291.00, cat:'Habitação' },
-      { date:'2026-04-27', desc:'FIDELIDADE COMPANHI', amount:-11.72, cat:'Seguros' },
-      { date:'2026-04-26', desc:'TFI DR ANTONIO MAXIMO', amount:40, cat:'Transferências' },
-      { date:'2026-04-26', desc:'Trf Mbway', amount:-40, cat:'Transferências' },
-      { date:'2026-04-22', desc:'COMPRA CONTINENTE MOD', amount:-8.69, cat:'Supermercado' },
-      { date:'2026-04-22', desc:'COMPRA INTERMARCHE', amount:-12.42, cat:'Supermercado' },
-      { date:'2026-04-21', desc:'COMPRA HONEST GREENS', amount:-46.15, cat:'Restaurantes' },
-      { date:'2026-04-20', desc:'COMPRA AUCHAN', amount:-5.58, cat:'Supermercado' },
-      { date:'2026-04-20', desc:'TFI DR ANTONIO MAXIMO', amount:100, cat:'Transferências' },
-      { date:'2026-04-20', desc:'FIDELIDADE COMPANHI', amount:-25.00, cat:'Seguros' },
-      { date:'2026-04-18', desc:'COMPRA KFC', amount:-8.05, cat:'Restaurantes' },
-      { date:'2026-04-14', desc:'VODAFONE PORTUGAL', amount:-37.60, cat:'Telecomunicações' },
-      { date:'2026-04-14', desc:'COMPRA KFC', amount:-7.75, cat:'Restaurantes' },
-      { date:'2026-03-31', desc:'SALARIO EMPRESA XYZ', amount:1800, cat:'Rendimentos' },
-      { date:'2026-03-30', desc:'COMPRA PINGO DOCE', amount:-45.20, cat:'Supermercado' },
-      { date:'2026-03-28', desc:'RENDA APARTAMENTO', amount:-650.00, cat:'Habitação' },
-      { date:'2026-03-25', desc:'VODAFONE PORTUGAL', amount:-37.60, cat:'Telecomunicações' },
-      { date:'2026-03-22', desc:'NETFLIX', amount:-15.99, cat:'Lazer' },
-      { date:'2026-03-20', desc:'COMPRA LIDL', amount:-32.10, cat:'Supermercado' },
-      { date:'2026-03-18', desc:'FARMACIA SAUDE', amount:-18.50, cat:'Saúde' },
-      { date:'2026-03-15', desc:'COMPRA HONEST GREENS', amount:-38.00, cat:'Restaurantes' },
-      { date:'2026-03-10', desc:'UBER', amount:-12.40, cat:'Transportes' },
-      { date:'2026-03-05', desc:'SPOTIFY', amount:-9.99, cat:'Lazer' },
-    ]);
-    State.setLoadedMonths([
-      { key:'2026-03', label:'Mar 2026', count:10 },
-      { key:'2026-04', label:'Abr 2026', count:20 },
-    ]);
-    Storage.save();
-    updateMonthsUI();
-    showDash(State.allData.length+' movimentos — 2 meses de demo', '', true);
-  });
-
   // Google Auth init
   setTimeout(() => {
     Storage.initGoogleAuth({
