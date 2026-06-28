@@ -101,8 +101,8 @@ function _pctAtual(porPilar, totalRend, slot) {
   return (val / totalRend) * 100;
 }
 
-// ─── Gerar conselhos com base no desvio ──────────────────────────────────────
-function _gerarConselhos(perfil, pcts) {
+// ─── Gerar conselhos específicos com dados reais ─────────────────────────────
+function _gerarConselhos(perfil, pcts, data, porPilar, totalRend) {
   const conselhos = [];
   const p = PERFIS[perfil];
 
@@ -110,40 +110,82 @@ function _gerarConselhos(perfil, pcts) {
   const desvioLaz  = pcts.lazer      - p.lazer;
   const desvioPoup = pcts.poupanca   - p.poupanca;
 
-  // Essenciais
+  const fmt = v => v.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+  // ── Calcular top categorias dentro de cada pilar ──────────────────────────
+  const gastoLiqCat = (cat) => {
+    const saidas   = data.filter(r => r.amount < 0 && r.cat === cat).reduce((s, r) => s + Math.abs(r.amount), 0);
+    const entradas = data.filter(r => r.amount > 0 && r.cat === cat && r.cat !== 'Rendimentos').reduce((s, r) => s + r.amount, 0);
+    return Math.max(0, saidas - entradas);
+  };
+
+  // Top categoria por pilar
+  const topCatDePilar = (pilarId) => {
+    const pilar = State.PILARES.find(p => p.id === pilarId);
+    if (!pilar || !pilar.cats.length) return null;
+    const cats = pilar.cats.map(cat => ({ cat, val: gastoLiqCat(cat) })).filter(x => x.val > 0);
+    cats.sort((a, b) => b.val - a.val);
+    return cats[0] || null;
+  };
+
+  const valEss  = porPilar['essenciais'] || 0;
+  const valLaz  = porPilar['lazer']      || 0;
+  const valPoup = porPilar['poupanca']   || 0;
+
+  const alvoEss  = totalRend > 0 ? totalRend * (p.essenciais  / 100) : 0;
+  const alvoLaz  = totalRend > 0 ? totalRend * (p.lazer       / 100) : 0;
+  const alvoPoup = totalRend > 0 ? totalRend * (p.poupanca    / 100) : 0;
+
+  // ── ESSENCIAIS ────────────────────────────────────────────────────────────
   if (desvioEss > 10) {
-    conselhos.push('🏠 Essenciais muito acima do objetivo. Revê Habitação, Telecomunicações ou Seguros — são as categorias com mais margem para reduzir.');
+    const excesso = valEss - alvoEss;
+    const top = topCatDePilar('essenciais');
+    const topTxt = top ? ` A categoria com mais peso é <strong>${top.cat}</strong> (${fmt(top.val)}).` : '';
+    conselhos.push(`🏠 <strong>Essenciais ${desvioEss.toFixed(1)}% acima do objetivo</strong> — estás a gastar ${fmt(excesso)} a mais do que o alvo de ${fmt(alvoEss)}.${topTxt} Revê contratos de telecomunicações, seguros ou rendas — são os mais fáceis de renegociar.`);
   } else if (desvioEss > 5) {
-    conselhos.push('🏠 Essenciais ligeiramente acima. Verifica se há subscrições ou contratos que possas renegociar.');
-  } else if (desvioEss < -10) {
-    conselhos.push('🏠 Essenciais muito abaixo do objetivo — podes estar a subnotificar despesas fixas ou o mês foi atípico.');
+    const excesso = valEss - alvoEss;
+    const top = topCatDePilar('essenciais');
+    const topTxt = top ? ` A categoria <strong>${top.cat}</strong> (${fmt(top.val)}) é a maior fatia.` : '';
+    conselhos.push(`🏠 <strong>Essenciais ligeiramente acima</strong> — ${fmt(excesso)} a mais que o alvo.${topTxt} Verifica se há subscrições automáticas que já não usas.`);
+  } else if (desvioEss < -5) {
+    conselhos.push(`🏠 <strong>Essenciais abaixo do esperado</strong> — pode ser um mês atípico ou há despesas fixas ainda não classificadas. Confirma se todas as categorias estão bem atribuídas.`);
+  } else {
+    conselhos.push(`✅ <strong>Essenciais dentro do objetivo</strong> — ${fmt(valEss)} de ${fmt(alvoEss)} alvo. Bom controlo das despesas fixas.`);
   }
 
-  // Lazer
+  // ── LAZER ─────────────────────────────────────────────────────────────────
   if (desvioLaz > 10) {
-    conselhos.push('🎉 Lazer acima do objetivo. Restauração e subscrições são as categorias mais fáceis de cortar temporariamente.');
-  } else if (desvioPoup < -5 && desvioLaz > 0) {
-    conselhos.push('🎉 Reduzir um pouco o lazer libertaria margem para aumentar a poupança.');
+    const excesso = valLaz - alvoLaz;
+    const top = topCatDePilar('lazer');
+    const topTxt = top ? ` A maior despesa de lazer é <strong>${top.cat}</strong> com ${fmt(top.val)}.` : '';
+    conselhos.push(`🎉 <strong>Lazer ${desvioLaz.toFixed(1)}% acima do objetivo</strong> — ${fmt(excesso)} acima do alvo de ${fmt(alvoLaz)}.${topTxt} Restauração e entretenimento são os mais fáceis de controlar no curto prazo.`);
+  } else if (desvioLaz > 3 && desvioPoup < 0) {
+    const mover = Math.min(valLaz - alvoLaz, alvoPoup - valPoup);
+    conselhos.push(`🎉 <strong>Lazer ligeiramente alto</strong> — reduzir ${fmt(mover)} em lazer chegaria para atingir o objetivo de poupança. Pequenas reduções em restauração ou subscrições fazem a diferença.`);
+  } else if (desvioLaz < -5) {
+    conselhos.push(`🎉 <strong>Lazer abaixo do objetivo</strong> — estás a gastar menos do que planeado em lazer. Podes realocar essa margem (${fmt(alvoLaz - valLaz)}) para poupança.`);
+  } else {
+    conselhos.push(`✅ <strong>Lazer controlado</strong> — ${fmt(valLaz)} de ${fmt(alvoLaz)} alvo.`);
   }
 
-  // Poupança
-  if (desvioPoup < -10) {
-    conselhos.push('💰 Poupança muito abaixo do objetivo. Considera a estratégia "paga-te primeiro": transfere a poupança logo no início do mês antes de gastar.');
+  // ── POUPANÇA ──────────────────────────────────────────────────────────────
+  if (desvioPoup < -15) {
+    const emFalta = alvoPoup - valPoup;
+    conselhos.push(`💰 <strong>Poupança muito abaixo do objetivo</strong> — faltam ${fmt(emFalta)} para atingir os ${p.poupanca}% (${fmt(alvoPoup)}). Experimenta a regra do "paga-te primeiro": logo no início do mês transfere ${fmt(alvoPoup)} para uma conta separada antes de qualquer outra despesa.`);
   } else if (desvioPoup < -5) {
-    conselhos.push('💰 Poupança abaixo do objetivo. Tenta aumentar gradualmente — mesmo +2% por mês faz diferença a longo prazo.');
+    const emFalta = alvoPoup - valPoup;
+    conselhos.push(`💰 <strong>Poupança abaixo do objetivo</strong> — faltam ${fmt(emFalta)}. Tenta poupar ${fmt(emFalta / 4)} por semana até ao fim do mês para compensar.`);
   } else if (desvioPoup >= 0) {
-    conselhos.push('💰 Boa poupança! Tens o pilar mais importante dentro ou acima do objetivo.');
+    conselhos.push(`💰 <strong>Poupança no objetivo ou acima</strong> — ${fmt(valPoup)} poupados (objetivo: ${fmt(alvoPoup)}). Excelente! Se ainda não tens investimentos automáticos, este é o momento certo para os configurar.`);
+  } else {
+    conselhos.push(`💰 <strong>Poupança perto do objetivo</strong> — ${fmt(valPoup)} de ${fmt(alvoPoup)} alvo. Quase lá — um pequeno ajuste no lazer chegaria.`);
   }
 
-  // Fluxo geral
+  // ── FLUXO GERAL ───────────────────────────────────────────────────────────
   const totalGasto = pcts.essenciais + pcts.lazer + pcts.poupanca;
-  if (totalGasto > 100) {
-    conselhos.push('⚠️ Estás a gastar mais do que ganhas neste período. Prioridade: reduzir despesas antes de pensar em poupança.');
-  }
-
-  // Se tudo bem
-  if (conselhos.length === 0) {
-    conselhos.push('✅ Estás dentro dos objetivos em todos os pilares. Mantém o ritmo!');
+  if (totalGasto > 105) {
+    const deficit = (totalRend > 0 ? (totalGasto / 100 * totalRend) - totalRend : 0);
+    conselhos.push(`⚠️ <strong>Gastos superiores ao rendimento</strong> — estás a gastar ${fmt(deficit)} acima do que recebes este mês. Prioridade imediata: identificar e cortar a categoria com mais desvio.`);
   }
 
   return conselhos;
@@ -239,7 +281,7 @@ function _renderDiagnostico() {
   }).join('');
 
   // Conselhos
-  const conselhos = _gerarConselhos(_perfilAtivo, pcts);
+  const conselhos = _gerarConselhos(_perfilAtivo, pcts, data, porPilar, totalRend);
   conselhosEl.innerHTML = `
     <div class="obj-conselhos-box">
       <div class="obj-conselhos-title">💡 Conselhos</div>
