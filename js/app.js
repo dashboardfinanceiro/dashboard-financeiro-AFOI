@@ -864,6 +864,12 @@ function handleFile(file, isLast, onDone) {
       State.loadedMonths.push({ key: m, label: nomeMes+' '+y, count });
     });
     State.loadedMonths.sort((a,b) => a.key.localeCompare(b.key));
+    // Ativar o último mês automaticamente
+    const lastMonth = State.loadedMonths[State.loadedMonths.length - 1];
+    if (lastMonth) {
+      State.setActiveTableMonth(lastMonth.key);
+      State.setActiveResumoMonth(lastMonth.key);
+    }
     Storage.save();
     if (isLast && Storage.gAccessToken) Storage.driveSave();
     else if (Storage.gAccessToken) Storage.scheduleDriveSave();
@@ -1013,6 +1019,12 @@ window.addEventListener('load', () => {
         Storage.loadBudget();
         Storage.driveLoad(uiCallbacks).then(() => {
           updateMonthsUI();
+          const lastMonth = State.loadedMonths[State.loadedMonths.length - 1];
+          if (lastMonth) {
+            State.setActiveTableMonth(lastMonth.key);
+            State.setActiveResumoMonth(lastMonth.key);
+          }
+          refresh();
         });
       },
       updateSessionUI: Storage.updateSessionUI,
