@@ -775,7 +775,8 @@ window._removeMonth = function(key) {
   if (!State.allData.length) { doReset(); return; }
   Storage.save();
   updateMonthsUI();
-  document.getElementById('fileInfoText').textContent = State.allData.length + ' movimentos no total';
+  const fitEl = document.getElementById('fileInfoText');
+  if (fitEl) fitEl.textContent = State.allData.length + ' movimentos no total';
   refresh();
 };
 
@@ -796,7 +797,8 @@ function refresh() {
 }
 
 function showDash(label, detail, isBankFmt) {
-  document.getElementById('fileInfoText').textContent = label + (detail ? ' · ' + detail : '');
+  const fileInfoTextEl = document.getElementById('fileInfoText');
+  if (fileInfoTextEl) fileInfoTextEl.textContent = label + (detail ? ' · ' + detail : '');
   document.getElementById('fileInfo').classList.remove('hidden');
   document.getElementById('hintBox').classList.add('hidden');
   document.getElementById('clearBtn').classList.remove('hidden');

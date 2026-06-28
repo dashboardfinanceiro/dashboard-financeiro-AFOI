@@ -205,6 +205,7 @@ export function restorePayload(p, uiCallbacks) {
 
 export function setDrivePill(msg, color) {
   const el = document.getElementById('drivePill');
+  if (!el) return;
   if (!msg) { el.classList.add('hidden'); return; }
   el.classList.remove('hidden');
   el.textContent = msg;
