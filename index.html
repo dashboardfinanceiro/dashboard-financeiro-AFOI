@@ -82,7 +82,7 @@
     <div id="monthsList" class="hidden" style="margin-top:0.75rem;">
       <div id="monthsChips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
     </div>
-    <div id="fileInfo" class="hidden"></div>
+    <div id="fileInfo" class="hidden"><span id="fileInfoText" style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;"></span></div>
   </div>
 
   <!-- Filtro de meses (afeta tudo abaixo) -->
@@ -166,6 +166,59 @@
     </div>
   </div>
 
+  <!-- Resumo de saídas -->
+  <div class="card" style="margin-bottom:1rem;">
+    <p class="card-title">Resumo de saídas por categoria</p>
+    <div class="table-wrap">
+      <table class="resumo-table">
+        <thead><tr><th>Categoria</th><th class="bar-cell"></th><th>Movs.</th><th>Total</th></tr></thead>
+        <tbody id="resumoSaiBody"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;font-size:12px;">Sem dados</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Budget -->
+  <div class="card" style="margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;flex-wrap:wrap;gap:8px;">
+      <p class="card-title" style="margin-bottom:0;">💰 Orçamento por categoria</p>
+      <button id="budgetToggleBtn" class="btn" onclick="window._toggleBudget()" style="font-size:11px;padding:5px 12px;">Mostrar objetivos</button>
+    </div>
+    <div id="budgetPainel" class="hidden">
+      <div class="budget-rendimento-wrap">
+        <span class="budget-rendimento-label">Rendimento mensal de referência</span>
+        <input id="budgetRendimento" type="number" step="1" placeholder="0" class="budget-input" style="width:110px;" oninput="window._onBudgetRendimentoChange()"/>
+        <span class="budget-input-sym">€</span>
+        <button class="btn" onclick="window._usarEntradasComoRendimento()" style="font-size:11px;padding:5px 10px;">Usar entradas do período</button>
+        <span class="budget-rendimento-note">atual: <strong id="rendimentoEfetivoLabel">—</strong></span>
+      </div>
+      <div class="budget-strategy-tabs">
+        <button class="budget-strategy-tab active" data-strategy="custom" onclick="window._applyStrategy('custom')">Livre</button>
+        <button class="budget-strategy-tab" data-strategy="503020" onclick="window._applyStrategy('503020')">50/30/20</button>
+        <button class="budget-strategy-tab" data-strategy="602020" onclick="window._applyStrategy('602020')">60/20/20</button>
+        <button class="budget-strategy-tab" data-strategy="702010" onclick="window._applyStrategy('702010')">70/20/10</button>
+        <button class="budget-strategy-tab" data-strategy="zero" onclick="window._applyStrategy('zero')">Base zero</button>
+      </div>
+      <p id="budgetStrategyDesc" style="font-size:11px;color:var(--muted);margin-bottom:0.75rem;font-family:'DM Mono',monospace;"></p>
+      <div id="budgetOverview" class="budget-overview" style="display:none;">
+        <div class="budget-overview-item">
+          <div class="budget-overview-label">Necessidades</div>
+          <div class="budget-overview-val" id="ovNecessidades">—</div>
+          <div class="budget-overview-sub" id="ovNecessidadesPct">—</div>
+        </div>
+        <div class="budget-overview-item">
+          <div class="budget-overview-label">Desejos</div>
+          <div class="budget-overview-val" id="ovDesejos">—</div>
+          <div class="budget-overview-sub" id="ovDesejoPct">—</div>
+        </div>
+        <div class="budget-overview-item">
+          <div class="budget-overview-label">Poupança</div>
+          <div class="budget-overview-val" id="ovPoupanca">—</div>
+          <div class="budget-overview-sub" id="ovPoupancaPct">—</div>
+        </div>
+      </div>
+      <div id="budgetCatsGrid" class="budget-cats-grid"></div>
+    </div>
+  </div>
 
   <!-- Table -->
   <div class="card">
