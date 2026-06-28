@@ -355,11 +355,6 @@ function handleOAuthCallback(callbacks) {
   const token = params.get('access_token');
   if (!token) return false;
   history.replaceState(null, '', window.location.pathname);
-  const code = prompt('Código de acesso:');
-  if (!code || code.trim() !== '3991Fd') {
-    alert('Código incorreto. Acesso negado.');
-    return true;
-  }
   fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
     headers: { Authorization: 'Bearer ' + token }
   }).then(r => r.json()).then(profile => {
