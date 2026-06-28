@@ -588,7 +588,7 @@ tr:hover td { background: var(--surface2); }
   top: 0;
   right: 0;
   height: 100vh;
-  width: 320px;
+  width: 420px;
   max-width: 92vw;
   background: var(--surface);
   border-left: 1px solid var(--border);
