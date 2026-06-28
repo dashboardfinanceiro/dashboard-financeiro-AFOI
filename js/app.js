@@ -453,32 +453,16 @@ function renderRulesList() {
     el.innerHTML = '<p style="font-size:12px;color:var(--muted);text-align:center;padding:1rem;">Ainda não tens regras. Adiciona a primeira acima.</p>';
     return;
   }
-  el.innerHTML = `<table style="width:100%;border-collapse:collapse;">
-    <thead><tr>
-      <th style="font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;padding:6px 10px;border-bottom:1px solid var(--border);text-align:left;">Ordem</th>
-      <th style="font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;padding:6px 10px;border-bottom:1px solid var(--border);text-align:left;">Se contiver…</th>
-      <th style="font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;padding:6px 10px;border-bottom:1px solid var(--border);text-align:left;">→ Categoria</th>
-      <th style="font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;padding:6px 10px;border-bottom:1px solid var(--border);"></th>
-    </tr></thead>
-    <tbody>
-    ${State.userRules.map((r, i) => {
-      const color = State.CAT_COLORS[State.CATS.indexOf(r.cat)] || '#888';
-      return `<tr style="${i%2===0?'':'background:var(--surface2);'}">
-        <td style="padding:8px 10px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);">
-          ${i>0 ? `<button onclick="window._moveRule(${i},-1)" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0 4px;font-size:14px;">↑</button>` : '<span style="padding:0 4px;opacity:0">↑</span>'}
-          ${i<State.userRules.length-1 ? `<button onclick="window._moveRule(${i},1)" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0 4px;font-size:14px;">↓</button>` : '<span style="padding:0 4px;opacity:0">↓</span>'}
-        </td>
-        <td style="padding:8px 10px;font-family:'DM Mono',monospace;font-size:13px;font-weight:500;">${r.keyword}</td>
-        <td style="padding:8px 10px;"><span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;">
-          <span style="width:8px;height:8px;border-radius:2px;background:${color};display:inline-block;"></span>${r.cat}
-        </span></td>
-        <td style="padding:8px 10px;text-align:right;">
-          <button onclick="window._deleteRule(${i})" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;" title="Apagar">×</button>
-        </td>
-      </tr>`;
-    }).join('')}
-    </tbody>
-  </table>`;
+  el.innerHTML = State.userRules.map((r, i) => {
+    const color = State.CAT_COLORS[State.CATS.indexOf(r.cat)] || '#888';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 4px;border-bottom:1px solid var(--border);">
+      <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.keyword}">${r.keyword}</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap;flex-shrink:0;">
+        <span style="width:7px;height:7px;border-radius:2px;background:${color};display:inline-block;"></span>${r.cat}
+      </span>
+      <button onclick="window._deleteRule(${i})" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;flex-shrink:0;padding:0 2px;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'" title="Apagar">×</button>
+    </div>`;
+  }).join('');
 }
 
 window._addRule = function() {
@@ -560,31 +544,6 @@ function reapplyCategories() {
   if (Storage.gAccessToken) Storage.scheduleDriveSave();
   refresh();
 }
-
-// ─── Pilares Config (continuação) ────────────────────────────────────────────
-
-window._toggleRegras = function() {
-  const drawer  = document.getElementById('regrasDrawer');
-  const overlay = document.getElementById('regrasOverlay');
-  if (!drawer) return;
-  if (drawer.classList.contains('open')) {
-    drawer.classList.remove('open');
-    overlay.classList.add('hidden');
-  } else {
-    overlay.classList.remove('hidden');
-    requestAnimationFrame(() => drawer.classList.add('open'));
-    renderRulesList();
-    renderCatChips();
-  }
-};
-
-window._closeRegras = function() {
-  const drawer  = document.getElementById('regrasDrawer');
-  const overlay = document.getElementById('regrasOverlay');
-  if (!drawer) return;
-  drawer.classList.remove('open');
-  overlay.classList.add('hidden');
-};
 
 // ─── Pilares Config ───────────────────────────────────────────────────────────
 function renderPilaresConfig() {
@@ -952,6 +911,30 @@ window._importData  = (input) => Storage.importData(input, uiCallbacks);
 window._forceDriveSave = Storage.forceDriveSave;
 window._startGoogleLogin = Storage.startGoogleLogin;
 window._gSignOut    = () => Storage.gSignOut({ updateSessionUI: Storage.updateSessionUI, doReset });
+
+// ─── Drawer Regras ────────────────────────────────────────────────────────────
+window._toggleRegras = function() {
+  const drawer  = document.getElementById('regrasDrawer');
+  const overlay = document.getElementById('regrasOverlay');
+  if (!drawer) return;
+  if (drawer.classList.contains('open')) {
+    drawer.classList.remove('open');
+    overlay.classList.add('hidden');
+  } else {
+    overlay.classList.remove('hidden');
+    requestAnimationFrame(() => drawer.classList.add('open'));
+    renderRulesList();
+    renderCatChips();
+  }
+};
+
+window._closeRegras = function() {
+  const drawer  = document.getElementById('regrasDrawer');
+  const overlay = document.getElementById('regrasOverlay');
+  if (!drawer) return;
+  drawer.classList.remove('open');
+  overlay.classList.add('hidden');
+};
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
