@@ -269,9 +269,32 @@
 </head>
 <body>
 
+<style>
+header {
+  background: linear-gradient(135deg, #0f2d1f 0%, #1a4a2e 60%, #1e5c38 100%) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+  padding: 0.9rem 2rem !important;
+}
+header h1 { font-size: 1.25rem !important; letter-spacing: 0.02em; }
+.hbtn-back {
+  font-size: 12px; padding: 5px 13px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 20px;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.72);
+  text-decoration: none;
+  font-family: 'DM Sans', sans-serif; font-weight: 500;
+  display: flex; align-items: center; gap: 5px;
+  transition: background 0.15s, color 0.15s;
+}
+.hbtn-back:hover { background: rgba(255,255,255,0.14); color: #fff; }
+</style>
+
 <header>
-  <div style="display:flex;align-items:center;gap:14px;">
-    <a href="index.html" style="color:rgba(255,255,255,0.55);text-decoration:none;font-size:12px;font-family:'DM Mono',monospace;transition:color 0.15s;" onmouseover="this.style.color='rgba(255,255,255,0.9)'" onmouseout="this.style.color='rgba(255,255,255,0.55)'">← Dashboard</a>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <a href="index.html" class="hbtn-back">← Dashboard</a>
+    <div style="width:1px;height:18px;background:rgba(255,255,255,0.15);"></div>
     <h1>📈 Investimentos & Poupanças</h1>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
