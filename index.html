@@ -59,7 +59,7 @@
     </div>
     <div class="upload-row">
       <div class="drop-area" id="dropZone">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
         <div>
           <p><strong>Arrasta o extrato aqui</strong> ou clica para escolher</p>
           <p>Cada ficheiro adiciona um mês — podes carregar vários</p>
@@ -68,7 +68,6 @@
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;">
         <button class="btn btn-accent" onclick="document.getElementById('fileInput').click()">+ Adicionar extrato</button>
-        <button class="btn" id="demoBtn">Ver demo</button>
         <button class="btn btn-danger hidden" id="clearBtn">Limpar tudo</button>
       </div>
     </div>
@@ -80,13 +79,10 @@
         <div style="margin-top:8px; border-top:1px solid var(--border); padding-top:8px; opacity:0.7">✅ Também suporta formato simples: <strong>data ; descrição ; valor</strong></div>
       </div>
     </div>
-    <div id="monthsList" class="hidden" style="margin-top:1rem;">
-      <p style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Períodos carregados</p>
+    <div id="monthsList" class="hidden" style="margin-top:0.75rem;">
       <div id="monthsChips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
     </div>
-    <div id="fileInfo" class="hidden" style="margin-top:0.75rem; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-      <span class="info-bar" id="fileInfoText"></span>
-    </div>
+    <div id="fileInfo" class="hidden"></div>
   </div>
 
   <!-- Filtro de meses (afeta tudo abaixo) -->
