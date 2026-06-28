@@ -187,7 +187,8 @@
       <button class="tab active" data-t="all">Todos</button>
       <button class="tab" data-t="in">Entradas</button>
       <button class="tab" data-t="out">Saídas</button>
-      <div style="margin-left:auto;display:flex;align-items:center;">
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+        <button class="btn" style="font-size:12px;padding:6px 12px;" onclick="window._toggleRegras()">⚙️ Regras</button>
         <button class="btn" style="font-size:12px;padding:6px 12px;" onclick="window._toggleAddMov()" id="addMovToggleBtn">+ Adicionar movimento</button>
         <span class="info-tip" tabindex="0">i<span class="info-tip-bubble">
           <strong>+ Adicionar movimento</strong> — cria uma linha manual, útil para corrigir situações que o extrato do banco não reflete bem (ex: um reembolso que cobre despesas de meses diferentes). Valor positivo = entrada, negativo = saída.<br/><br/>
@@ -234,42 +235,6 @@
     </div>
   </div>
 
-  <!-- Painel de Regras -->
-  <div class="card" style="margin-top:1rem;" id="regrasCard">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
-      <p class="card-title" style="margin-bottom:0;">⚙️ As minhas regras de categorização</p>
-      <button class="btn" onclick="window._toggleRegras()" id="regrasToggleBtn">Mostrar regras</button>
-    </div>
-    <div id="regrasPainel" class="hidden">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border);">
-        <input id="ruleKeyword" type="text" placeholder="Palavra-chave (ex: GARRIDO UNIP, LASERUM...)"
-          style="flex:2;min-width:180px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface2);color:var(--text);"
-          onkeydown="if(event.key==='Enter')window._addRule()"/>
-        <select id="ruleCat" onchange="window._toggleNewCat(this)"
-          style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface2);color:var(--text);cursor:pointer;">
-        </select>
-        <input id="ruleNewCat" type="text" placeholder="Nome da nova categoria..."
-          style="flex:1;min-width:140px;padding:8px 12px;border:1px solid var(--accent);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface2);color:var(--text);display:none;"
-          onkeydown="if(event.key==='Enter')window._addRule()"/>
-        <button class="btn btn-accent" onclick="window._addRule()">+ Adicionar regra</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-        <span id="rulesSavedPill" style="font-size:11px;color:var(--green);font-family:'DM Mono',monospace;opacity:0;transition:opacity 0.4s;">✓ regras guardadas</span>
-      </div>
-      <div id="rulesList">
-        <p style="font-size:12px;color:var(--muted);text-align:center;padding:1rem;">Ainda não tens regras. Adiciona a primeira acima.</p>
-      </div>
-      <p style="font-size:11px;color:var(--muted);margin-top:0.75rem;font-family:'DM Mono',monospace;">
-        💡 As tuas regras têm prioridade sobre tudo. A primeira que bater numa descrição ganha — por isso a ordem importa.
-      </p>
-      <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border);">
-        <p style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:0.6rem;">Gerir categorias</p>
-        <div id="catChipsList" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
-        <p style="font-size:11px;color:var(--muted);margin-top:0.5rem;font-family:'DM Mono',monospace;">✕ para eliminar. Categorias em uso nos movimentos são reassociadas a «Diversos».</p>
-      </div>
-    </div>
-  </div>
-
   <!-- Backup manual -->
   <div class="card" style="margin-top:1rem;">
     <p class="card-title">💾 Backup manual</p>
@@ -285,6 +250,47 @@
 </div>
 
 <script type="module" src="js/app.js"></script>
+
+<!-- ── Drawer Regras ── -->
+<div id="regrasOverlay" class="obj-overlay hidden" onclick="window._closeRegras()"></div>
+
+<div id="regrasDrawer" class="obj-drawer">
+  <div class="obj-header">
+    <div>
+      <div class="obj-title">⚙️ Regras de categorização</div>
+      <div class="obj-subtitle">A primeira regra que bater ganha — a ordem importa</div>
+    </div>
+    <button class="obj-close-btn" onclick="window._closeRegras()">×</button>
+  </div>
+  <div class="obj-body">
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border);">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input id="ruleKeyword" type="text" placeholder="Palavra-chave (ex: GARRIDO UNIP, LASERUM...)"
+          style="flex:2;min-width:160px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface2);color:var(--text);"
+          onkeydown="if(event.key==='Enter')window._addRule()"/>
+        <select id="ruleCat" onchange="window._toggleNewCat(this)"
+          style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface2);color:var(--text);cursor:pointer;">
+        </select>
+        <button class="btn btn-accent" onclick="window._addRule()">+ Adicionar</button>
+      </div>
+      <input id="ruleNewCat" type="text" placeholder="Nome da nova categoria..."
+        style="padding:8px 12px;border:1px solid var(--accent);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface2);color:var(--text);display:none;"
+        onkeydown="if(event.key==='Enter')window._addRule()"/>
+      <span id="rulesSavedPill" style="font-size:11px;color:var(--green);font-family:'DM Mono',monospace;opacity:0;transition:opacity 0.4s;">✓ regras guardadas</span>
+    </div>
+    <div id="rulesList">
+      <p style="font-size:12px;color:var(--muted);text-align:center;padding:1rem;">Ainda não tens regras. Adiciona a primeira acima.</p>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:0.75rem;font-family:'DM Mono',monospace;">
+      💡 As tuas regras têm prioridade sobre tudo. A primeira que bater numa descrição ganha — por isso a ordem importa.
+    </p>
+    <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border);">
+      <p style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:0.6rem;">Gerir categorias</p>
+      <div id="catChipsList" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      <p style="font-size:11px;color:var(--muted);margin-top:0.5rem;font-family:'DM Mono',monospace;">✕ para eliminar. Categorias em uso são reassociadas a «Diversos».</p>
+    </div>
+  </div>
+</div>
 
 <!-- ── Widget Objetivos ── -->
 <div id="objetivosOverlay" class="obj-overlay hidden" onclick="window._closeObjetivos()"></div>
