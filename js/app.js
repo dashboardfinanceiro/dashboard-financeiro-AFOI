@@ -38,9 +38,9 @@ function renderKPIs(data) {
   const reembolsos = data.filter(r => r.amount > 0 && r.cat !== 'Rendimentos').reduce((s, r) => s + r.amount, 0);
   const saiLiq = Math.abs(sai) - reembolsos;
   document.getElementById('kpiEnt').textContent = '+' + fmtAbs(ent);
-  document.getElementById('kpiEntN').textContent = data.filter(r => r.amount > 0 && r.cat === 'Rendimentos').length + ' movimentos';
+  document.getElementById('kpiEntN').textContent = '';
   document.getElementById('kpiSai').textContent = '-' + fmtAbs(Math.max(0, saiLiq));
-  document.getElementById('kpiSaiN').textContent = data.filter(r => r.amount < 0).length + ' movimentos';
+  document.getElementById('kpiSaiN').textContent = '';
 
   const fluxo = ent - Math.max(0, saiLiq);
   const kpiFluxoEl = document.getElementById('kpiFluxo');
