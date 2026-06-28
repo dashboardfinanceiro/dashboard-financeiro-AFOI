@@ -71,52 +71,53 @@ function renderPilaresResumo(data) {
 
   const totalRend = data.filter(r => r.amount > 0 && r.cat === 'Rendimentos').reduce((s, r) => s + r.amount, 0);
   const totalSai  = State.PILARES.flatMap(p => p.cats).reduce((s, cat) => s + gastoLiquidoCat(cat), 0);
+  const porPilar  = State.PILARES.map(p => ({ p, total: p.cats.reduce((s, cat) => s + gastoLiquidoCat(cat), 0) }));
 
-  const porPilar = State.PILARES.map(p => ({
-    p, total: p.cats.reduce((s, cat) => s + gastoLiquidoCat(cat), 0)
-  }));
+  const taxaPct   = totalRend > 0 ? (totalSai / totalRend * 100) : 0;
+  const taxaColor = taxaPct < 80 ? 'var(--green)' : taxaPct <= 100 ? 'var(--accent2)' : taxaPct <= 110 ? 'var(--red)' : 'var(--red-dark)';
 
-  // Linha % do rendimento
+  // Cards unificados por pilar
   elRend.classList.remove('hidden');
   elRend.innerHTML = porPilar.map(({p, total}) => {
-    const pct = totalRend > 0 ? (total / totalRend * 100).toFixed(1) : '0.0';
-    return `<div class="kpi">
-      <div class="kpi-label">${p.emoji} ${p.nome}</div>
-      <div class="kpi-val neu" style="color:${p.color};">${pct}%</div>
-      <div class="kpi-sub">do rendimento</div>
-    </div>`;
-  }).join('') + (() => {
-    const taxaPct = totalRend > 0 ? (totalSai / totalRend * 100) : 0;
-    const taxaColor = taxaPct < 80 ? 'var(--green)' : taxaPct <= 100 ? 'var(--accent2)' : taxaPct <= 110 ? 'var(--red)' : 'var(--red-dark)';
-    return `<div class="kpi">
-      <div class="kpi-label" style="display:flex;align-items:center;">Taxa de Alocação
-        <span class="info-tip" tabindex="0">i<span class="info-tip-bubble">
-          <strong>% do rendimento já alocada aos pilares (gastos + poupança/investimento).</strong>
-          <div class="tip-row"><span><span class="tip-dot" style="background:var(--green);"></span>&lt; 80%</span><span>Saudável</span></div>
-          <div class="tip-row"><span><span class="tip-dot" style="background:var(--accent2);"></span>80–100%</span><span>Equilibrado</span></div>
-          <div class="tip-row"><span><span class="tip-dot" style="background:var(--red);"></span>100–110%</span><span>No limite</span></div>
-          <div class="tip-row"><span><span class="tip-dot" style="background:var(--red-dark);"></span>&gt; 110%</span><span>Alerta</span></div>
-        </span></span>
+    const pctRend = totalRend > 0 ? (total / totalRend * 100) : 0;
+    const pctSai  = totalSai  > 0 ? (total / totalSai  * 100) : 0;
+    const barRend = Math.min(pctRend, 100);
+    const barSai  = Math.min(pctSai,  100);
+    return `<div class="kpi" style="padding:1rem 1.25rem;">
+      <div class="kpi-label" style="margin-bottom:0.6rem;">${p.emoji} ${p.nome}</div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px;">
+        <span style="font-family:'DM Serif Display',serif;font-size:1.45rem;color:${p.color};line-height:1.1;">${pctRend.toFixed(1)}%</span>
+        <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">do rendimento</span>
       </div>
-      <div class="kpi-val neu" style="color:${taxaColor};">${taxaPct.toFixed(1)}%</div>
-      <div class="kpi-sub">${fmtAbs(totalSai)} alocados</div>
+      <div style="height:4px;background:var(--border);border-radius:3px;margin-bottom:8px;overflow:hidden;">
+        <div style="height:4px;width:${barRend}%;background:${p.color};border-radius:3px;transition:width .4s;"></div>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px;">
+        <span style="font-size:1rem;font-weight:600;color:${p.color};font-family:'DM Mono',monospace;">${pctSai.toFixed(1)}%</span>
+        <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">das saídas · ${fmtAbs(total)}</span>
+      </div>
+      <div style="height:3px;background:var(--border);border-radius:3px;overflow:hidden;">
+        <div style="height:3px;width:${barSai}%;background:${p.color};opacity:0.45;border-radius:3px;transition:width .4s;"></div>
+      </div>
     </div>`;
-  })();
+  }).join('') + `<div class="kpi" style="padding:1rem 1.25rem;">
+    <div class="kpi-label" style="margin-bottom:0.6rem;display:flex;align-items:center;">Taxa de Alocação
+      <span class="info-tip" tabindex="0">i<span class="info-tip-bubble">
+        <strong>% do rendimento já alocada aos pilares.</strong>
+        <div class="tip-row"><span><span class="tip-dot" style="background:var(--green);"></span>&lt; 80%</span><span>Saudável</span></div>
+        <div class="tip-row"><span><span class="tip-dot" style="background:var(--accent2);"></span>80–100%</span><span>Equilibrado</span></div>
+        <div class="tip-row"><span><span class="tip-dot" style="background:var(--red);"></span>100–110%</span><span>No limite</span></div>
+        <div class="tip-row"><span><span class="tip-dot" style="background:var(--red-dark);"></span>&gt; 110%</span><span>Alerta</span></div>
+      </span></span>
+    </div>
+    <div style="font-family:'DM Serif Display',serif;font-size:1.45rem;color:${taxaColor};line-height:1.1;margin-bottom:4px;">${taxaPct.toFixed(1)}%</div>
+    <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">${fmtAbs(totalSai)} alocados</div>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;font-family:'DM Mono',monospace;">Total saídas<br/><span style="font-size:13px;font-weight:600;color:var(--text);">${fmtAbs(totalSai)}</span></div>
+  </div>`;
 
-  // Linha % das saídas + valor €
-  elSai.classList.remove('hidden');
-  elSai.innerHTML = porPilar.map(({p, total}) => {
-    const pct = totalSai > 0 ? (total / totalSai * 100).toFixed(1) : '0.0';
-    return `<div class="kpi">
-      <div class="kpi-label">${p.emoji} ${p.nome}</div>
-      <div class="kpi-val neu" style="color:${p.color};">${pct}%</div>
-      <div class="kpi-sub">${fmtAbs(total)} · das saídas</div>
-    </div>`;
-  }).join('') + `<div class="kpi">
-      <div class="kpi-label">Total saídas</div>
-      <div class="kpi-val neg">${fmtAbs(totalSai)}</div>
-      <div class="kpi-sub">100,0%</div>
-    </div>`;
+  // Ocultar a segunda grelha — informação já integrada nos cards acima
+  elSai.classList.add('hidden');
+  elSai.innerHTML = '';
 }
 
 // ─── Tabela ───────────────────────────────────────────────────────────────────
