@@ -267,8 +267,6 @@ function _renderDiagnostico() {
     const dotCor     = ok ? '#1D9E75' : acima ? '#D85A30' : '#BA7517';
     const deltaTxt   = (delta > 0 ? '+' : '') + delta.toFixed(1) + '%';
     const deltaCor   = ok ? '#1D9E75' : acima ? '#D85A30' : '#BA7517';
-    const barPct     = Math.min(atual, 100);
-    const targetPct  = Math.min(slot.alvo, 100);
 
     // Valores em € do objetivo e do atual
     const alvoEur  = totalRend > 0 ? totalRend * (slot.alvo / 100) : 0;
@@ -303,14 +301,6 @@ function _renderDiagnostico() {
           <div style="font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:2px;">Diferença</div>
           <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:${deltaCor};">${difEur > 0.5 ? '+' : difEur < -0.5 ? '-' : ''}${fmtVal(Math.abs(difEur))}</div>
           <div style="font-size:10px;color:${deltaCor};">${difLabel}</div>
-        </div>
-      </div>
-
-      <!-- Barra -->
-      <div style="margin-left:19px;">
-        <div class="obj-diag-bar-wrap" style="height:5px;">
-          <div class="obj-diag-bar-atual" style="width:${barPct}%;background:${dotCor};"></div>
-          <div class="obj-diag-bar-target" style="left:${targetPct}%;"></div>
         </div>
       </div>
     </div>`;
