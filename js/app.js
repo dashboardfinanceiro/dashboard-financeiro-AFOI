@@ -973,12 +973,23 @@ window.addEventListener('load', () => {
   setTimeout(() => {
     Storage.initGoogleAuth({
       onLogin: () => {
+        // Mostra estado de carregamento no overlay enquanto busca dados do Drive
+        const signinContent = document.getElementById('gSigninContent');
+        const loadingContent = document.getElementById('gLoadingContent');
+        const overlay = document.getElementById('gSigninOverlay');
+        if (signinContent) signinContent.style.display = 'none';
+        if (loadingContent) loadingContent.style.display = 'block';
+        if (overlay) overlay.style.display = 'flex';
+
         Storage.updateSessionUI();
         Storage.loadRules();
         refreshCatSelects();
         renderRulesList();
         Storage.loadBudget();
         Storage.driveLoad(uiCallbacks).then(() => {
+          if (overlay) overlay.style.display = 'none';
+          if (signinContent) signinContent.style.display = 'block';
+          if (loadingContent) loadingContent.style.display = 'none';
           updateMonthsUI();
           const lastMonth = State.loadedMonths[State.loadedMonths.length - 1];
           if (lastMonth) {
