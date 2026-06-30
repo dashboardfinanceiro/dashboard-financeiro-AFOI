@@ -15,13 +15,23 @@
 <!-- Google Sign-In overlay -->
 <div class="g-signin-overlay" id="gSigninOverlay">
   <div class="g-signin-box">
-    <div style="font-size:2.8rem;margin-bottom:1rem;">💳</div>
-    <h2>Dashboard Financeiro</h2>
-    <p>Entra com a tua conta Google para guardares os teus dados em segurança no Google Drive.</p>
-    <div id="gSigninBtn" style="display:flex;justify-content:center;"></div>
-    <p style="font-size:11px;color:var(--muted);margin-top:1.2rem;opacity:.6;">Os teus dados ficam privados no teu Google Drive.</p>
+    <div id="gSigninContent">
+      <div style="font-size:2.8rem;margin-bottom:1rem;">💳</div>
+      <h2>Dashboard Financeiro</h2>
+      <p>Entra com a tua conta Google para guardares os teus dados em segurança no Google Drive.</p>
+      <div id="gSigninBtn" style="display:flex;justify-content:center;"></div>
+      <p style="font-size:11px;color:var(--muted);margin-top:1.2rem;opacity:.6;">Os teus dados ficam privados no teu Google Drive.</p>
+    </div>
+    <div id="gLoadingContent" style="display:none;text-align:center;">
+      <div style="font-size:2rem;margin-bottom:1rem;animation:spin 1s linear infinite;display:inline-block;">⟳</div>
+      <p style="font-size:15px;font-weight:500;margin-bottom:0.3rem;">A carregar os teus dados…</p>
+      <p style="font-size:12px;color:var(--muted);opacity:.7;">Só um segundo.</p>
+    </div>
   </div>
 </div>
+<style>
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>
 
 <style>
 header {
