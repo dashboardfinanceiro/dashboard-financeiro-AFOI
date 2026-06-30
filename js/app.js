@@ -746,6 +746,7 @@ function refresh() {
   renderPilaresResumo(f);
   renderMonthFilterChips();
   renderPilares(f);
+  renderPilaresConfig();
   renderResumo(f);
   renderTable(f);
   const budgetPainel = document.getElementById('budgetPainel');
