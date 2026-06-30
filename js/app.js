@@ -109,9 +109,15 @@ function renderPilaresResumo(data) {
         <div class="tip-row"><span><span class="tip-dot" style="background:var(--red);"></span>100–110%</span><span>No limite</span></div>
         <div class="tip-row"><span><span class="tip-dot" style="background:var(--red-dark);"></span>&gt; 110%</span><span>Alerta</span></div>
       </span></span>
+      <span class="edu-tip" tabindex="0">📖<span class="edu-tip-bubble">
+        <strong>Como ler estas percentagens?</strong><br/>
+        <strong>% do rendimento:</strong> que fatia do que ganhaste foi para este pilar — mostra o peso de cada área na tua vida financeira.<br/><br/>
+        <strong>% das saídas:</strong> que fatia do que gastaste foi para este pilar — mostra onde o teu dinheiro realmente foi, independentemente de quanto ganhaste.<br/><br/>
+        A <strong>Taxa de Alocação</strong> soma as saídas alocadas aos 3 pilares e compara com o rendimento total: mostra quanto do que ganhas já tem destino definido.
+      </span></span>
     </div>
     <div style="font-family:'DM Serif Display',serif;font-size:1.45rem;color:${taxaColor};line-height:1.1;margin-bottom:4px;">${taxaPct.toFixed(1)}%</div>
-    <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">${fmtAbs(totalSai)} alocados</div>
+    <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">do rendimento · ${fmtAbs(totalSai)} alocados</div>
     <div style="margin-top:10px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;font-family:'DM Mono',monospace;">Total saídas<br/><span style="font-size:13px;font-weight:600;color:var(--text);">${fmtAbs(totalSai)}</span></div>
   </div>`;
 
@@ -376,56 +382,10 @@ window._toggleCatMovs = function(id) {
 };
 
 function renderPilaresChart() {
-  const cardEl     = document.getElementById('pilaresChartCard');
-  const hasPilarCats = State.PILARES.some(p => p.cats.length > 0);
-  if (!State.allData.length || !hasPilarCats) { if (cardEl) cardEl.style.display = 'none'; return; }
-  if (cardEl) cardEl.style.display = '';
-  const currentYear = new Date().getFullYear().toString();
-  const allMonths   = Array.from({length:12}, (_,i) => currentYear + '-' + String(i+1).padStart(2,'0'));
-  const nomeMes     = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const labels      = allMonths.map(m => { const [,mo] = m.split('-'); return nomeMes[parseInt(mo)-1]; });
-  const datasets = State.PILARES.filter(p => p.cats.length > 0).map(p => {
-    const dataPoints = allMonths.map(m => {
-      const gastoLiqMes = cat => {
-        const sai = State.allData.filter(r => r.date.slice(0,7)===m && r.amount<0 && r.cat===cat).reduce((s,r)=>s+Math.abs(r.amount),0);
-        const ent = State.allData.filter(r => r.date.slice(0,7)===m && r.amount>0 && r.cat===cat && r.cat!=='Rendimentos').reduce((s,r)=>s+r.amount,0);
-        return Math.max(0, sai-ent);
-      };
-      const total = p.cats.reduce((s,cat) => s+gastoLiqMes(cat), 0);
-      if (State.pilarChartMode === 'pct') {
-        const rendMes = State.allData.filter(r => r.date.slice(0,7)===m && r.amount>0 && r.cat==='Rendimentos').reduce((s,r)=>s+r.amount,0);
-        return rendMes > 0 ? parseFloat((total/rendMes*100).toFixed(1)) : null;
-      }
-      return total > 0 ? parseFloat(total.toFixed(2)) : null;
-    });
-    return { label: p.emoji+' '+p.nome, data: dataPoints, borderColor: p.color, backgroundColor: p.color+'22',
-      pointBackgroundColor: p.color, pointRadius: ctx => ctx.parsed.y !== null ? 5 : 0,
-      pointHoverRadius: 7, tension: 0.3, fill: false, borderWidth: 2, spanGaps: false };
-  });
-  if (State.chartPilares) State.chartPilares.destroy();
-  State.setChartPilares(new Chart(document.getElementById('chartPilares'), {
-    type: 'line', data: { labels, datasets },
-    options: { responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => {
-        const v = ctx.parsed.y;
-        return ' ' + ctx.dataset.label + ': ' + (State.pilarChartMode==='pct' ? v.toFixed(1)+'%' : v.toFixed(2).replace('.',',')+' €');
-      }}}},
-      scales: {
-        x: { ticks: { color:'#8a8680', font:{size:11} }, grid:{color:'#e0dbd322'} },
-        y: { ticks: { color:'#8a8680', font:{size:11}, callback: v => State.pilarChartMode==='pct' ? v+'%' : v+'€' }, grid:{color:'#e0dbd355'} }
-      }
-    }
-  }));
-  const leg = document.getElementById('legendPilares');
-  if (leg) leg.innerHTML = datasets.map(d => `<span><span class="legend-dot" style="background:${d.borderColor}"></span>${d.label}</span>`).join('');
+  // gráfico removido do UI
 }
 
-window._setPilarChartMode = function(mode) {
-  State.setPilarChartMode(mode);
-  document.getElementById('pilarChartEur').classList.toggle('active', mode==='eur');
-  document.getElementById('pilarChartPct').classList.toggle('active', mode==='pct');
-  renderPilaresChart();
-};
+window._setPilarChartMode = function() {};
 
 // ─── Regras ───────────────────────────────────────────────────────────────────
 function refreshCatSelects() {
