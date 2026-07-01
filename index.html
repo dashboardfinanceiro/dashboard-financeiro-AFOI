@@ -27,25 +27,48 @@
   body:not(.authed) > *:not(#authGate) { display: none !important; }
 </style>
 <script>
-  document.getElementById('authLoginBtn').addEventListener('click', function () {
+(function () {
+  var loginBtn = document.getElementById('authLoginBtn');
+
+  if (!window.netlifyIdentity) {
+    // O script identity-widget.js não carregou (bloqueado por ad-blocker/extensão,
+    // firewall, ou falha de rede). Avisa em vez de falhar silenciosamente.
+    console.error('[AFOI] window.netlifyIdentity não existe. O script https://identity.netlify.com/v1/netlify-identity-widget.js não carregou. Verifica bloqueadores de anúncios/privacidade (uBlock, Brave Shields, Privacy Badger) e o separador Network do DevTools.');
+    loginBtn.textContent = 'Erro ao carregar login — desativa ad-blockers e recarrega';
+    loginBtn.disabled = true;
+    loginBtn.style.opacity = '0.6';
+    loginBtn.style.cursor = 'not-allowed';
+    return;
+  }
+
+  loginBtn.addEventListener('click', function () {
     window.netlifyIdentity.open('login');
   });
+
   window.netlifyIdentity.on('init', function (user) {
+    console.log('[AFOI] Netlify Identity inicializado. Utilizador:', user);
     if (user) {
       document.body.classList.add('authed');
       document.getElementById('authGate').style.display = 'none';
     }
   });
-  window.netlifyIdentity.on('login', function () {
+  window.netlifyIdentity.on('login', function (user) {
+    console.log('[AFOI] Login efetuado:', user);
     document.body.classList.add('authed');
     document.getElementById('authGate').style.display = 'none';
     window.netlifyIdentity.close();
   });
   window.netlifyIdentity.on('logout', function () {
+    console.log('[AFOI] Logout efetuado.');
     document.body.classList.remove('authed');
     document.getElementById('authGate').style.display = 'flex';
   });
+  window.netlifyIdentity.on('error', function (err) {
+    console.error('[AFOI] Erro no Netlify Identity:', err);
+  });
+
   window.netlifyIdentity.init();
+})();
 </script>
 
 <!-- Google Sign-In overlay -->
