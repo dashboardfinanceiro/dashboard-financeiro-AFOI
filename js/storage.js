@@ -339,7 +339,9 @@ export function initGoogleAuth(callbacks) {
 }
 
 export function startGoogleLogin() {
-  const redirect = 'https://dashboardfinanceiro.github.io/dashboard-financeiro';
+  // Usa sempre o domínio atual (funciona tanto no GitHub Pages como no Netlify,
+  // ou em qualquer outro domínio onde o site esteja publicado).
+  const redirect = window.location.origin + window.location.pathname;
   const url = 'https://accounts.google.com/o/oauth2/v2/auth' +
     '?client_id=' + encodeURIComponent(G_CLIENT_ID) +
     '&redirect_uri=' + encodeURIComponent(redirect) +
