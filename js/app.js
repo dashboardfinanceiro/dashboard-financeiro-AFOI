@@ -34,15 +34,13 @@ function getFilteredData() {
 // ─── KPIs ─────────────────────────────────────────────────────────────────────
 function renderKPIs(data) {
   const ent = data.filter(r => r.amount > 0 && r.cat === 'Rendimentos').reduce((s, r) => s + r.amount, 0);
-  const sai = data.filter(r => r.amount < 0).reduce((s, r) => s + r.amount, 0);
-  const reembolsos = data.filter(r => r.amount > 0 && r.cat !== 'Rendimentos').reduce((s, r) => s + r.amount, 0);
-  const saiLiq = Math.abs(sai) - reembolsos;
+  const sai = data.filter(r => r.amount < 0).reduce((s, r) => s + Math.abs(r.amount), 0);
   document.getElementById('kpiEnt').textContent = '+' + fmtAbs(ent);
   document.getElementById('kpiEntN').textContent = '';
-  document.getElementById('kpiSai').textContent = '-' + fmtAbs(Math.max(0, saiLiq));
+  document.getElementById('kpiSai').textContent = '-' + fmtAbs(sai);
   document.getElementById('kpiSaiN').textContent = '';
 
-  const fluxo = ent - Math.max(0, saiLiq);
+  const fluxo = ent - sai;
   const kpiFluxoEl = document.getElementById('kpiFluxo');
   kpiFluxoEl.textContent = (fluxo > 0 ? '+' : fluxo < 0 ? '-' : '') + fmtAbs(fluxo);
   kpiFluxoEl.classList.remove('pos', 'neg', 'neu');
