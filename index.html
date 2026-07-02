@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dashboard Financeiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- Google Sign-In overlay -->
+<div class="g-signin-overlay" id="gSigninOverlay">
+  <div class="g-signin-box">
+    <div style="font-size:2.8rem;margin-bottom:1rem;">💳</div>
+    <h2>Dashboard Financeiro</h2>
+    <p>Entra com a tua conta Google para guardares os teus dados em segurança no Google Drive.</p>
+    <div id="gSigninBtn" style="display:flex;justify-content:center;"></div>
+    <p style="font-size:11px;color:var(--muted);margin-top:1.2rem;opacity:.6;">Os teus dados ficam privados no teu Google Drive.</p>
+  </div>
+</div>
+
+<style>
+header {
+  background: linear-gradient(135deg, #0f2d1f 0%, #1a4a2e 60%, #1e5c38 100%) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+  padding: 0.9rem 2rem !important;
+}
+header h1 { font-size: 1.25rem !important; letter-spacing: 0.02em; }
+.hbtn-nav {
+  font-size: 12px; padding: 5px 13px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 20px;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.72);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-weight: 500;
+  display: flex; align-items: center; gap: 5px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  text-decoration: none;
+}
+.hbtn-nav:hover {
+  background: rgba(255,255,255,0.14);
+  color: #fff;
+  border-color: rgba(255,255,255,0.32);
+}
+.hbtn-invest {
+  font-size: 12px; padding: 6px 15px;
+  border-radius: 20px;
+  background: rgba(96,190,230,0.16);
+  border: 1.5px solid rgba(96,190,230,0.5);
+  color: #a8dff5;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-weight: 600;
+  display: flex; align-items: center; gap: 6px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+.hbtn-invest:hover {
+  background: rgba(96,190,230,0.28);
+  border-color: rgba(96,190,230,0.8);
+  color: #d6f0fb;
+  box-shadow: 0 0 12px rgba(96,190,230,0.2);
+}
+.hbtn-sep {
+  width: 1px; height: 18px;
+  background: rgba(255,255,255,0.15);
+  margin: 0 2px;
+}
+</style>
+
+<header>
+  <h1>💳 Dashboard Financeiro</h1>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <button id="regrasBtn" onclick="window._toggleRegras()" class="hbtn-nav">⚙️ Regras</button>
+    <button id="objetivosBtn" onclick="window._toggleObjetivos()" class="hbtn-nav">🎯 Objetivos</button>
+    <div class="hbtn-sep"></div>
+    <a href="investimentos.html" class="hbtn-invest">📈 Investimentos & Poupanças</a>
+    <span id="savedPill" class="hidden" style="font-size:11px;opacity:.6;font-family:'DM Mono',monospace;color:rgba(255,255,255,0.7);margin-left:4px;">dados guardados</span>
+    <span id="drivePill" class="hidden g-drive-pill"></span>
+    <button id="driveSaveBtn" onclick="window._forceDriveSave()" class="hidden" style="font-size:12px;padding:5px 12px;border:1.5px solid rgba(255,255,255,0.25);border-radius:6px;background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;">💾 Guardar</button>
+    <div id="gUserChip" class="g-user-chip hidden" onclick="window._gSignOut()">
+      <img id="gUserAvatar" class="g-user-avatar" src="" alt=""/>
+      <span id="gUserName"></span>
+      <span style="opacity:.45;font-size:11px;margin-left:2px;">· sair</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Upload -->
+  <div class="upload-card" id="uploadCard">
+
+    <!-- Vista compacta (após carregar dados) -->
+    <div id="uploadCompact" class="hidden" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;">Extratos</span>
+      <div id="monthsChips" style="display:flex;flex-wrap:wrap;gap:6px;flex:1;"></div>
+      <span id="fileInfoText" style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap;"></span>
+      <button class="btn btn-accent" onclick="document.getElementById('fileInput').click()" style="font-size:12px;padding:6px 14px;white-space:nowrap;">+ Extrato</button>
+      <button class="btn btn-danger" id="clearBtn" style="font-size:12px;padding:6px 14px;white-space:nowrap;">Limpar</button>
+      <input type="file" id="fileInput" accept=".csv,.txt" multiple style="display:none;"/>
+    </div>
+
+    <!-- Vista expandida (estado inicial) -->
+    <div id="uploadExpanded">
+      <p class="upload-label">Carregar extratos bancários</p>
+      <div id="noSessionWarning" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;display:flex;align-items:center;gap:8px;">
+        ⚠️ <span>Para guardar automaticamente na tua conta Google, <strong>faz login primeiro</strong> antes de carregar o extrato.</span>
+      </div>
+      <div class="upload-row">
+        <div class="drop-area" id="dropZone">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+          <div>
+            <p><strong>Arrasta o extrato aqui</strong> ou clica para escolher</p>
+            <p>Cada ficheiro adiciona um mês — podes carregar vários</p>
+          </div>
+          <input type="file" id="fileInputExpanded" accept=".csv,.txt" multiple/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="btn btn-accent" onclick="document.getElementById('fileInputExpanded').click()">+ Adicionar extrato</button>
+        </div>
+      </div>
+      <div style="margin-top:1rem;" id="hintBox">
+        <div class="hint">
+          <div class="hint-format">✅ <strong>Formato banco suportado</strong> (CGD, BPI, Novo Banco, Santander, etc.)</div>
+          <div>Data mov. ; Data valor ; Descrição ; Débito ; Crédito ; Saldo contabilístico ; Saldo disponível ; Categoria</div>
+          <div style="margin-top:6px; opacity:0.7">30-04-2026 ; 30-04-2026 ; TRF CXDAPP ;  ; 500,00 ; 741,41 ; 720,51 ; Diversos</div>
+          <div style="margin-top:8px; border-top:1px solid var(--border); padding-top:8px; opacity:0.7">✅ Também suporta formato simples: <strong>data ; descrição ; valor</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="fileInfo" class="hidden"></div>
+  </div>
+
+  <!-- Filtro de meses (afeta tudo abaixo) -->
+  <div style="margin-bottom:1.5rem;">
+    <div id="monthFilterChips" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;"></div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">Rendimento</div>
+      <div class="kpi-val pos" id="kpiEnt">+0,00 €</div>
+      <div class="kpi-sub" id="kpiEntN">0 movimentos</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Saídas</div>
+      <div class="kpi-val neg" id="kpiSai">-0,00 €</div>
+      <div class="kpi-sub" id="kpiSaiN">0 movimentos</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label" style="display:flex;align-items:center;">Fluxo de Caixa Líquido
+        <span class="info-tip" tabindex="0">i<span class="info-tip-bubble">
+          <strong>Rendimento − Saídas, no período.</strong>
+          <div class="tip-row"><span><span class="tip-dot" style="background:var(--green);"></span>&gt; 0 €</span><span>Ideal</span></div>
+          <div class="tip-row"><span><span class="tip-dot" style="background:var(--gold);"></span>= 0 €</span><span>Risco</span></div>
+          <div class="tip-row"><span><span class="tip-dot" style="background:var(--red);"></span>&lt; 0 €</span><span>Crítico</span></div>
+        </span></span>
+        <span class="edu-tip" tabindex="0">📖<span class="edu-tip-bubble">
+          <strong>O que é o Fluxo de Caixa?</strong><br/>
+          É o dinheiro que sobra (ou falta) depois de pagar tudo: <strong>Rendimento − Saídas</strong>.<br/><br/>
+          Se for positivo, estás a poupar — esse valor pode ir para investimento ou fundo de emergência. Se for negativo, estás a gastar mais do que ganhas e a usar poupanças ou crédito para cobrir a diferença.
+        </span></span>
+      </div>
+      <div class="kpi-val neu" id="kpiFluxo">0,00 €</div>
+      <div class="kpi-sub" id="kpiFluxoN">rendimento − saídas</div>
+    </div>
+  </div>
+
+  <!-- Resumo Pilares: % do rendimento -->
+  <div id="pilaresResumoRend" class="kpi-grid hidden" style="margin-bottom:0.75rem;"></div>
+
+  <!-- Resumo Pilares: % das saídas -->
+  <div id="pilaresResumoSai" class="kpi-grid hidden" style="margin-bottom:1.5rem;"></div>
+
+  <!-- Pilares Financeiros -->
+  <div class="card" id="pilaresCard" style="margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+      <p class="card-title" style="margin-bottom:0;display:flex;align-items:center;">Pilares financeiros
+        <span class="info-tip info-tip-blue" tabindex="0">i<span class="info-tip-bubble">
+          <strong>Pilares financeiros</strong> agrupam as tuas categorias de despesa em 3 grandes blocos: Essenciais (necessidades fixas), Lazer (desejos/discricionário) e Poupança &amp; Investimento. Atribui categorias a cada pilar em "Configurar".
+        </span></span>
+      </p>
+      <button class="btn" onclick="window._togglePilaresConfig()" id="pilaresConfigBtn" style="font-size:11px;padding:5px 12px;">⚙️ Configurar</button>
+    </div>
+    <div id="pilaresConfig" class="hidden" style="border-bottom:1px solid var(--border);padding-bottom:1rem;margin-bottom:1rem;">
+      <p style="font-size:11px;color:var(--muted);margin-bottom:0.8rem;">Clica numa categoria para a atribuir a um pilar. As que estão num pilar têm × para remover.</p>
+      <div id="pilaresConfigGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem;"></div>
+    </div>
+    <div id="pilaresCards" style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:0.5rem;"></div>
+  </div>
+
+
+
+
+  <!-- Resumo de entradas -->
+  <div class="card" style="margin-bottom:1rem;">
+    <p class="card-title">Resumo de entradas por categoria</p>
+    <div class="table-wrap">
+      <table class="resumo-table">
+        <thead><tr><th>Categoria</th><th class="bar-cell"></th><th>Movs.</th><th>Total</th></tr></thead>
+        <tbody id="resumoEntBody"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;font-size:12px;">Sem dados</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+
+
+
+
+  <!-- Table -->
+  <div class="card">
+    <div style="margin-bottom:0.85rem;">
+      <div style="position:relative;">
+        <svg style="position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:0.4;pointer-events:none;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="Pesquisar no extrato… (ex: Auchan, KFC, Spotify)"
+          style="width:100%;padding:8px 36px 8px 34px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface2);color:var(--text);outline:none;transition:border-color 0.15s;"
+          oninput="window._onSearchInput(this.value)"
+          onfocus="this.style.borderColor='var(--accent)'"
+          onblur="this.style.borderColor='var(--border)'"
+        />
+        <button id="searchClearBtn" onclick="window._clearSearch()" title="Limpar pesquisa"
+          style="display:none;position:absolute;right:9px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:17px;line-height:1;padding:2px 4px;"
+          onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'">×</button>
+      </div>
+      <div id="searchResultCount" style="display:none;font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:5px;padding-left:2px;"></div>
+    </div>
+    <div class="filter-row" style="flex-wrap:wrap;gap:6px;align-items:center;">
+      <div id="monthFilterSep" class="filter-sep hidden"></div>
+      <button class="tab active" data-t="all">Todos</button>
+      <button class="tab" data-t="in">Entradas</button>
+      <button class="tab" data-t="out">Saídas</button>
+      <div style="margin-left:auto;display:flex;align-items:center;">
+        <div style="display:flex;align-items:center;">
+          <button class="btn" style="font-size:12px;padding:6px 12px;" onclick="window._toggleAddMov()" id="addMovToggleBtn">+ Adicionar movimento</button>
+          <span class="info-tip" tabindex="0">i<span class="info-tip-bubble">
+            <strong>+ Adicionar movimento</strong> — cria uma linha manual, útil para corrigir situações que o extrato do banco não reflete bem (ex: um reembolso que cobre despesas de meses diferentes). Valor positivo = entrada, negativo = saída.<br/><br/>
+            <strong>🗑 na tabela</strong> — apaga esse movimento. Não pode ser desfeito.
+          </span></span>
+        </div>
+      </div>
+    </div>
+    <div id="addMovPanel" class="hidden" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;">
+      <div style="display:flex;flex-direction:column;gap:3px;">
+        <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Data</label>
+        <input id="addMovDate" type="date" style="padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface);color:var(--text);"/>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;flex:2;min-width:160px;">
+        <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Descrição</label>
+        <input id="addMovDesc" type="text" placeholder="Ex: Reembolso almoço João" style="padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface);color:var(--text);"/>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;">
+        <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Valor (€)</label>
+        <input id="addMovValor" type="number" step="0.01" placeholder="-50,00" style="width:110px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface);color:var(--text);"/>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;">
+        <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Categoria</label>
+        <select id="addMovCat" style="padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface);color:var(--text);"></select>
+      </div>
+      <button class="btn btn-accent" onclick="window._addManualMov()" style="font-size:12px;padding:8px 14px;">Adicionar</button>
+      <button class="btn" onclick="window._toggleAddMov()" style="font-size:12px;padding:8px 14px;">Cancelar</button>
+      <p style="width:100%;font-size:11px;color:var(--muted);margin-top:2px;">💡 Valor positivo = entrada · valor negativo = saída (ex: -500 para uma despesa de 500€)</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:100px">Data</th>
+            <th>Descrição</th>
+            <th style="width:160px">Categoria</th>
+            <th style="width:100px;text-align:right">Valor</th>
+            <th style="width:34px"></th>
+          </tr>
+        </thead>
+        <tbody id="movBody">
+          <tr><td colspan="5"><div class="empty-state">Sem dados<p>Carrega um extrato CSV ou usa o demo.</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+
+</div>
+
+<script type="module" src="js/app.js"></script>
+
+<!-- ── Drawer Regras ── -->
+<div id="regrasOverlay" class="obj-overlay hidden" onclick="window._closeRegras()"></div>
+
+<div id="regrasDrawer" class="obj-drawer">
+  <div class="obj-header">
+    <div>
+      <div class="obj-title">⚙️ Regras de categorização e gestão de categorias</div>
+    </div>
+    <button class="obj-close-btn" onclick="window._closeRegras()">×</button>
+  </div>
+  <div class="obj-body">
+    <p style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:0.75rem;">Regras de categorização</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border);">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input id="ruleKeyword" type="text" placeholder="Palavra-chave (ex: GARRIDO UNIP, LASERUM...)"
+          style="flex:2;min-width:160px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface2);color:var(--text);"
+          onkeydown="if(event.key==='Enter')window._addRule()"/>
+        <select id="ruleCat" onchange="window._toggleNewCat(this)"
+          style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface2);color:var(--text);cursor:pointer;">
+        </select>
+        <button class="btn btn-accent" onclick="window._addRule()">+ Adicionar</button>
+      </div>
+      <input id="ruleNewCat" type="text" placeholder="Nome da nova categoria..."
+        style="padding:8px 12px;border:1px solid var(--accent);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface2);color:var(--text);display:none;"
+        onkeydown="if(event.key==='Enter')window._addRule()"/>
+      <span id="rulesSavedPill" style="font-size:11px;color:var(--green);font-family:'DM Mono',monospace;opacity:0;transition:opacity 0.4s;">✓ regras guardadas</span>
+    </div>
+    <div id="rulesList">
+      <p style="font-size:12px;color:var(--muted);text-align:center;padding:1rem;">Ainda não tens regras. Adiciona a primeira acima.</p>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:0.75rem;font-family:'DM Mono',monospace;">
+      💡 As tuas regras têm prioridade sobre tudo. A primeira que bater numa descrição ganha — por isso a ordem importa.
+    </p>
+    <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);">
+      <p style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:0.6rem;">Gestão de categorias</p>
+      <div id="catChipsList" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      <p style="font-size:11px;color:var(--muted);margin-top:0.5rem;font-family:'DM Mono',monospace;">✕ para eliminar. Categorias em uso são reassociadas a «Diversos».</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── Widget Objetivos ── -->
+<div id="objetivosOverlay" class="obj-overlay hidden" onclick="window._closeObjetivos()"></div>
+
+<div id="objetivosDrawer" class="obj-drawer">
+  <div class="obj-header">
+    <div>
+      <div class="obj-title">🎯 Objetivos financeiros</div>
+      <div class="obj-subtitle">Escolhe o teu perfil e vê o diagnóstico</div>
+    </div>
+    <button class="obj-close-btn" onclick="window._closeObjetivos()" title="Fechar">×</button>
+  </div>
+  <div class="obj-body">
+    <div class="obj-section-label">Perfil financeiro</div>
+    <div id="objPerfisList">
+      <button class="obj-perfil-btn" data-perfil="equilibrio" onclick="window._selectPerfil('equilibrio')">
+        <div class="obj-perfil-name">⚖️ Equilíbrio</div>
+        <div class="obj-perfil-pct">50% essenciais · 30% lazer · 20% poupança</div>
+      </button>
+      <button class="obj-perfil-btn" data-perfil="base" onclick="window._selectPerfil('base')">
+        <div class="obj-perfil-name">🧱 Base sólida</div>
+        <div class="obj-perfil-pct">60% essenciais · 20% lazer · 20% poupança</div>
+      </button>
+      <button class="obj-perfil-btn" data-perfil="realista" onclick="window._selectPerfil('realista')">
+        <div class="obj-perfil-name">💪 Realista</div>
+        <div class="obj-perfil-pct">70% essenciais · 20% lazer · 10% poupança</div>
+      </button>
+      <button class="obj-perfil-btn" data-perfil="riqueza" onclick="window._selectPerfil('riqueza')">
+        <div class="obj-perfil-name">🚀 Construir riqueza</div>
+        <div class="obj-perfil-pct">50% essenciais · 20% lazer · 30% poupança</div>
+      </button>
+    </div>
+    <div id="objDiagnostico" class="hidden">
+      <div class="obj-section-label" style="margin-top:1.25rem;">Diagnóstico</div>
+      <div id="objMesLabel" class="obj-mes-label"></div>
+      <div id="objDiagRows"></div>
+      <div id="objConselhos"></div>
+    </div>
+    <div id="objEmpty" class="obj-empty">
+      <p>Carrega um extrato para veres o diagnóstico.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

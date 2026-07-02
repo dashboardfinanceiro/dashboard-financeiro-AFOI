@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Investimentos & Poupanças — Dashboard Financeiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="style.css"/>
+<style>
+/* ─── Investimentos — estilos específicos ─────────────────────────────────── */
+
+.inv-page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+/* KPIs topo */
+.inv-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 1.75rem;
+}
+
+/* Contas grid */
+.inv-contas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+  margin-bottom: 1.5rem;
+}
+
+/* Card conta */
+.inv-conta-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.inv-conta-card:hover { box-shadow: 0 2px 14px rgba(0,0,0,0.07); }
+
+.inv-conta-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.1rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.inv-conta-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.inv-conta-emoji {
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.inv-conta-nome {
+  font-size: 14px; font-weight: 500; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.inv-conta-tipo {
+  font-size: 10px; color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.inv-conta-total {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.2rem; color: var(--green);
+  white-space: nowrap; flex-shrink: 0;
+}
+.inv-conta-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.inv-icon-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 14px; padding: 4px 6px;
+  border-radius: 6px; transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+.inv-icon-btn:hover { background: var(--surface2); color: var(--text); }
+.inv-icon-btn.danger:hover { color: var(--red); background: #fff5f0; }
+
+/* Instrumentos dentro da conta */
+.inv-instrumentos { padding: 0.5rem 0.75rem 0.75rem; }
+
+.inv-instrumento-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 6px;
+  border-radius: 8px;
+  transition: background 0.12s;
+  cursor: default;
+}
+.inv-instrumento-row:hover { background: var(--surface2); }
+
+.inv-instr-ticker {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px; font-weight: 500;
+  color: var(--text);
+  min-width: 56px;
+  background: var(--surface2);
+  border-radius: 5px;
+  padding: 2px 7px;
+  text-align: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.inv-instr-nome {
+  font-size: 12px; color: var(--muted);
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.inv-instr-valor {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px; font-weight: 500;
+  color: var(--text); white-space: nowrap; flex-shrink: 0;
+}
+.inv-instr-delete {
+  opacity: 0; transition: opacity 0.15s;
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 14px; padding: 2px 4px;
+  border-radius: 4px; line-height: 1;
+}
+.inv-instrumento-row:hover .inv-instr-delete { opacity: 1; }
+.inv-instr-delete:hover { color: var(--red) !important; }
+
+/* Botão + instrumento */
+.inv-add-instr-btn {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; padding: 7px 6px;
+  background: none; border: 1.5px dashed var(--border);
+  border-radius: 8px; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 12px;
+  color: var(--muted); margin-top: 6px;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.inv-add-instr-btn:hover {
+  border-color: var(--accent); background: var(--surface2); color: var(--accent);
+}
+
+/* Form inline para adicionar instrumento */
+.inv-instr-form {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 8px;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+.inv-instr-form.open { display: flex; }
+.inv-instr-form-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+.inv-instr-field { display: flex; flex-direction: column; gap: 3px; }
+.inv-instr-label {
+  font-size: 10px; font-weight: 500; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.inv-instr-input {
+  padding: 6px 10px;
+  border: 1px solid var(--border); border-radius: 7px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  background: var(--surface); color: var(--text);
+  outline: none; transition: border-color 0.15s;
+}
+.inv-instr-input:focus { border-color: var(--accent); }
+
+/* Modal nova conta */
+.inv-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(20,18,14,0.45);
+  z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+}
+.inv-modal-overlay.open { opacity: 1; pointer-events: all; }
+
+.inv-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  width: 100%; max-width: 400px;
+  margin: 1rem;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.14);
+  transform: translateY(10px);
+  transition: transform 0.2s;
+}
+.inv-modal-overlay.open .inv-modal { transform: translateY(0); }
+
+.inv-modal-title {
+  font-size: 15px; font-weight: 500; color: var(--text);
+  margin-bottom: 1.1rem;
+}
+.inv-modal-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 0.85rem; }
+.inv-modal-label {
+  font-size: 10px; font-weight: 500; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .07em;
+}
+.inv-modal-input {
+  padding: 9px 12px;
+  border: 1px solid var(--border); border-radius: 9px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  background: var(--surface2); color: var(--text);
+  outline: none; transition: border-color 0.15s;
+}
+.inv-modal-input:focus { border-color: var(--accent); }
+
+.inv-emoji-picker {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;
+}
+.inv-emoji-option {
+  width: 34px; height: 34px; border-radius: 8px;
+  border: 1.5px solid var(--border); background: var(--surface2);
+  cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+.inv-emoji-option.selected {
+  border-color: var(--accent); background: #e8f0e8;
+}
+
+.inv-modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.2rem; }
+
+/* Tipo badge */
+.inv-tipo-options { display: flex; gap: 6px; flex-wrap: wrap; }
+.inv-tipo-btn {
+  padding: 5px 12px; border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: transparent; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 12px;
+  color: var(--muted); transition: all 0.15s;
+}
+.inv-tipo-btn.selected {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+
+/* Empty state */
+.inv-empty {
+  text-align: center; padding: 3.5rem 1rem;
+  color: var(--muted); grid-column: 1/-1;
+}
+.inv-empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+.inv-empty-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 0.4rem; }
+.inv-empty-sub { font-size: 12px; font-family: 'DM Mono', monospace; }
+
+/* Saved pill */
+.inv-saved-pill {
+  font-size: 11px; color: var(--green);
+  font-family: 'DM Mono', monospace;
+  opacity: 0; transition: opacity 0.4s;
+}
+.inv-saved-pill.show { opacity: 1; }
+
+/* Barra de distribuição */
+.inv-dist-bar {
+  height: 6px; border-radius: 3px;
+  background: var(--border); overflow: hidden;
+  margin-top: 3px;
+}
+.inv-dist-bar-fill { height: 6px; border-radius: 3px; transition: width 0.4s ease; }
+
+@media (max-width: 640px) {
+  .inv-contas-grid { grid-template-columns: 1fr; }
+  .inv-kpi-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<style>
+header {
+  background: linear-gradient(135deg, #0f2d1f 0%, #1a4a2e 60%, #1e5c38 100%) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+  padding: 0.9rem 2rem !important;
+}
+header h1 { font-size: 1.25rem !important; letter-spacing: 0.02em; }
+.hbtn-back {
+  font-size: 12px; padding: 5px 13px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 20px;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.72);
+  text-decoration: none;
+  font-family: 'DM Sans', sans-serif; font-weight: 500;
+  display: flex; align-items: center; gap: 5px;
+  transition: background 0.15s, color 0.15s;
+}
+.hbtn-back:hover { background: rgba(255,255,255,0.14); color: #fff; }
+</style>
+
+<header>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <a href="index.html" class="hbtn-back">← Dashboard</a>
+    <div style="width:1px;height:18px;background:rgba(255,255,255,0.15);"></div>
+    <h1>📈 Investimentos & Poupanças</h1>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span id="invSavedPill" class="inv-saved-pill">✓ guardado</span>
+    <div id="gUserChip" class="g-user-chip hidden">
+      <img id="gUserAvatar" class="g-user-avatar" src="" alt=""/>
+      <span id="gUserName"></span>
+      <span style="opacity:.45;font-size:11px;margin-left:2px;">· sair</span>
+    </div>
+  </div>
+</header>
+
+<div class="inv-page">
+
+  <!-- KPIs topo -->
+  <div class="inv-kpi-grid" id="invKpis">
+    <div class="kpi">
+      <div class="kpi-label">Total Investido</div>
+      <div class="kpi-val pos" id="kpiTotal">0,00 €</div>
+      <div class="kpi-sub" id="kpiContas">0 contas</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Maior Posição</div>
+      <div class="kpi-val neu" id="kpiMaior">—</div>
+      <div class="kpi-sub" id="kpiMaiorNome">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Nº de Instrumentos</div>
+      <div class="kpi-val neu" id="kpiNInstr">0</div>
+      <div class="kpi-sub">ativos no portfólio</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Conta com + peso</div>
+      <div class="kpi-val neu" id="kpiTopConta">—</div>
+      <div class="kpi-sub" id="kpiTopContaPct">—</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:10px;flex-wrap:wrap;">
+    <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">
+      As tuas contas
+    </div>
+    <button class="btn btn-accent" onclick="invUI.openModal()" style="font-size:12px;padding:7px 16px;display:flex;align-items:center;gap:6px;">
+      <span style="font-size:15px;line-height:1;">+</span> Conta
+    </button>
+  </div>
+
+  <!-- Grid de contas -->
+  <div class="inv-contas-grid" id="invContasGrid">
+    <!-- preenchido por JS -->
+  </div>
+
+</div>
+
+<!-- Modal nova conta -->
+<div class="inv-modal-overlay" id="invModalOverlay" onclick="invUI.closeModal(event)">
+  <div class="inv-modal" onclick="event.stopPropagation()">
+    <div class="inv-modal-title" id="invModalTitle">Nova conta</div>
+
+    <div class="inv-modal-field">
+      <div class="inv-modal-label">Nome da conta</div>
+      <input id="invModalNome" class="inv-modal-input" type="text" placeholder="Ex: XTB, PPR Allianz, + Aforro…"
+        onkeydown="if(event.key==='Enter')invUI.saveModal()"/>
+    </div>
+
+    <div class="inv-modal-field">
+      <div class="inv-modal-label">Tipo</div>
+      <div class="inv-tipo-options">
+        <button class="inv-tipo-btn selected" data-tipo="Corretora" onclick="invUI.selectTipo(this)">📊 Corretora</button>
+        <button class="inv-tipo-btn" data-tipo="PPR" onclick="invUI.selectTipo(this)">🛡️ PPR</button>
+        <button class="inv-tipo-btn" data-tipo="Poupança" onclick="invUI.selectTipo(this)">💰 Poupança</button>
+        <button class="inv-tipo-btn" data-tipo="Cripto" onclick="invUI.selectTipo(this)">₿ Cripto</button>
+        <button class="inv-tipo-btn" data-tipo="Outro" onclick="invUI.selectTipo(this)">📁 Outro</button>
+      </div>
+    </div>
+
+    <div class="inv-modal-field">
+      <div class="inv-modal-label">Ícone</div>
+      <div class="inv-emoji-picker" id="invEmojiPicker">
+        <!-- preenchido por JS -->
+      </div>
+    </div>
+
+    <div class="inv-modal-footer">
+      <button class="btn" onclick="invUI.closeModal()">Cancelar</button>
+      <button class="btn btn-accent" onclick="invUI.saveModal()" id="invModalSaveBtn">Criar conta</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Estado ───────────────────────────────────────────────────────────────────
+const INV_KEY = 'df_investimentos_v1';
+const EMOJIS  = ['🏦','📊','📈','💼','🛡️','💰','₿','🌍','🏠','⚡','🎯','💎','🌱','🚀','🏅'];
+const TIPO_EMOJI = { Corretora: '📊', PPR: '🛡️', Poupança: '💰', Cripto: '₿', Outro: '📁' };
+
+let state = { contas: [] }; // { id, nome, tipo, emoji, instrumentos: [{id, ticker, nome, valor}] }
+let editingContaId = null;
+
+// ─── Persistência ─────────────────────────────────────────────────────────────
+function loadState() {
+  try {
+    const raw = localStorage.getItem(INV_KEY);
+    if (raw) state = JSON.parse(raw);
+  } catch(e) { state = { contas: [] }; }
+  if (!Array.isArray(state.contas)) state.contas = [];
+}
+
+function saveState() {
+  localStorage.setItem(INV_KEY, JSON.stringify(state));
+  // Drive sync se disponível
+  scheduleDriveSync();
+  showSavedPill();
+}
+
+function showSavedPill() {
+  const el = document.getElementById('invSavedPill');
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ─── Google Drive sync ────────────────────────────────────────────────────────
+// Lê token do localStorage do dashboard principal (mesma origem)
+function getDriveToken() {
+  try { return localStorage.getItem('df_gtoken') || null; } catch(e) { return null; }
+}
+
+let _driveTimer = null;
+function scheduleDriveSync() {
+  clearTimeout(_driveTimer);
+  _driveTimer = setTimeout(driveSave, 1500);
+}
+
+async function driveSave() {
+  const token = getDriveToken();
+  if (!token) return;
+  try {
+    // Encontrar ou criar ficheiro
+    const search = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name%3D'df_investimentos.json'+and+trashed%3Dfalse&spaces=appDataFolder`,
+      { headers: { Authorization: 'Bearer ' + token } }
+    );
+    const sData = await search.json();
+    const content = JSON.stringify(state);
+    const blob    = new Blob([content], { type: 'application/json' });
+    const meta    = JSON.stringify({ name: 'df_investimentos.json', parents: ['appDataFolder'] });
+    const form    = new FormData();
+    form.append('metadata', new Blob([meta], { type: 'application/json' }));
+    form.append('file', blob);
+
+    if (sData.files && sData.files.length > 0) {
+      const fid = sData.files[0].id;
+      const upd = new FormData();
+      upd.append('file', blob);
+      await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=multipart`,
+        { method: 'PATCH', headers: { Authorization: 'Bearer ' + token }, body: upd }
+      );
+    } else {
+      await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form }
+      );
+    }
+  } catch(e) { /* silencioso se token expirado */ }
+}
+
+async function driveLoad() {
+  const token = getDriveToken();
+  if (!token) return;
+  try {
+    const search = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name%3D'df_investimentos.json'+and+trashed%3Dfalse&spaces=appDataFolder`,
+      { headers: { Authorization: 'Bearer ' + token } }
+    );
+    const sData = await search.json();
+    if (!sData.files || !sData.files.length) return;
+    const fid = sData.files[0].id;
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fid}?alt=media`,
+      { headers: { Authorization: 'Bearer ' + token } }
+    );
+    const remote = await res.json();
+    if (remote && Array.isArray(remote.contas)) {
+      state = remote;
+      localStorage.setItem(INV_KEY, JSON.stringify(state));
+      render();
+    }
+  } catch(e) { /* se Drive falha, usa localStorage */ }
+}
+
+// ─── Cálculos ─────────────────────────────────────────────────────────────────
+function totalConta(conta) {
+  return conta.instrumentos.reduce((s, i) => s + (parseFloat(i.valor) || 0), 0);
+}
+
+function totalGeral() {
+  return state.contas.reduce((s, c) => s + totalConta(c), 0);
+}
+
+function fmt(n) {
+  return n.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+// ─── Render KPIs ──────────────────────────────────────────────────────────────
+function renderKPIs() {
+  const total   = totalGeral();
+  const nContas = state.contas.length;
+  const allInstr = state.contas.flatMap(c => c.instrumentos.map(i => ({ ...i, contaNome: c.nome })));
+  const nInstr  = allInstr.length;
+
+  document.getElementById('kpiTotal').textContent   = fmt(total);
+  document.getElementById('kpiContas').textContent  = nContas + (nContas === 1 ? ' conta' : ' contas');
+  document.getElementById('kpiNInstr').textContent  = nInstr;
+
+  if (allInstr.length) {
+    const top = allInstr.reduce((a, b) => (parseFloat(b.valor)||0) > (parseFloat(a.valor)||0) ? b : a);
+    document.getElementById('kpiMaior').textContent    = fmt(parseFloat(top.valor)||0);
+    document.getElementById('kpiMaiorNome').textContent = top.ticker + (top.nome ? ' · ' + top.nome : '') + ' (' + top.contaNome + ')';
+  } else {
+    document.getElementById('kpiMaior').textContent    = '—';
+    document.getElementById('kpiMaiorNome').textContent = '—';
+  }
+
+  if (state.contas.length && total > 0) {
+    const topConta = state.contas.reduce((a, b) => totalConta(b) > totalConta(a) ? b : a);
+    const pct = (totalConta(topConta) / total * 100).toFixed(1);
+    document.getElementById('kpiTopConta').textContent   = topConta.emoji + ' ' + topConta.nome;
+    document.getElementById('kpiTopContaPct').textContent = pct + '% do total';
+  } else {
+    document.getElementById('kpiTopConta').textContent   = '—';
+    document.getElementById('kpiTopContaPct').textContent = '—';
+  }
+}
+
+// ─── Render Grid ──────────────────────────────────────────────────────────────
+function renderContas() {
+  const grid  = document.getElementById('invContasGrid');
+  const total = totalGeral();
+
+  if (!state.contas.length) {
+    grid.innerHTML = `<div class="inv-empty">
+      <div class="inv-empty-icon">📂</div>
+      <div class="inv-empty-title">Ainda sem contas</div>
+      <div class="inv-empty-sub">Clica em "+ Conta" para adicionar a tua primeira conta de investimento.</div>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = state.contas.map(conta => {
+    const tot  = totalConta(conta);
+    const pct  = total > 0 ? (tot / total * 100) : 0;
+    const instrHTML = conta.instrumentos.length
+      ? conta.instrumentos.map(instr => `
+          <div class="inv-instrumento-row" id="instr-row-${instr.id}">
+            <span class="inv-instr-ticker">${escHTML(instr.ticker)}</span>
+            <span class="inv-instr-nome">${escHTML(instr.nome || '')}</span>
+            <span class="inv-instr-valor">${fmt(parseFloat(instr.valor)||0)}</span>
+            <button class="inv-instr-delete" onclick="invUI.deleteInstrumento('${conta.id}','${instr.id}')" title="Remover">×</button>
+          </div>`).join('')
+      : `<div style="font-size:12px;color:var(--muted);padding:8px 6px;font-family:'DM Mono',monospace;font-style:italic;">Sem instrumentos — adiciona abaixo</div>`;
+
+    return `
+    <div class="inv-conta-card" id="conta-card-${conta.id}">
+      <div class="inv-conta-header">
+        <div class="inv-conta-info">
+          <div class="inv-conta-emoji">${conta.emoji}</div>
+          <div>
+            <div class="inv-conta-nome">${escHTML(conta.nome)}</div>
+            <div class="inv-conta-tipo">${conta.tipo}</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+          <span class="inv-conta-total">${fmt(tot)}</span>
+          <span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;">${pct.toFixed(1)}% do total</span>
+        </div>
+        <div class="inv-conta-actions">
+          <button class="inv-icon-btn" onclick="invUI.editConta('${conta.id}')" title="Editar conta">✏️</button>
+          <button class="inv-icon-btn danger" onclick="invUI.deleteConta('${conta.id}')" title="Apagar conta">🗑</button>
+        </div>
+      </div>
+
+      <!-- Barra de peso -->
+      <div style="padding:0 1.1rem;">
+        <div class="inv-dist-bar" style="margin-top:8px;">
+          <div class="inv-dist-bar-fill" style="width:${Math.min(pct,100)}%;background:var(--green);"></div>
+        </div>
+      </div>
+
+      <!-- Instrumentos -->
+      <div class="inv-instrumentos">
+        ${instrHTML}
+
+        <!-- Botão + instrumento -->
+        <button class="inv-add-instr-btn" onclick="invUI.toggleInstrForm('${conta.id}')">
+          <span style="font-size:15px;line-height:1;">+</span> instrumento
+        </button>
+
+        <!-- Form inline -->
+        <div class="inv-instr-form" id="instr-form-${conta.id}">
+          <div class="inv-instr-form-row">
+            <div class="inv-instr-field" style="min-width:80px;">
+              <span class="inv-instr-label">Ticker / Código</span>
+              <input id="instr-ticker-${conta.id}" class="inv-instr-input" style="width:90px;" type="text" placeholder="SP500" maxlength="12"
+                oninput="this.value=this.value.toUpperCase()"
+                onkeydown="if(event.key==='Enter')invUI.saveInstrumento('${conta.id}')"/>
+            </div>
+            <div class="inv-instr-field" style="flex:1;min-width:100px;">
+              <span class="inv-instr-label">Nome (opcional)</span>
+              <input id="instr-nome-${conta.id}" class="inv-instr-input" type="text" placeholder="iShares Core S&P 500"
+                onkeydown="if(event.key==='Enter')invUI.saveInstrumento('${conta.id}')"/>
+            </div>
+            <div class="inv-instr-field" style="min-width:90px;">
+              <span class="inv-instr-label">Valor (€)</span>
+              <input id="instr-valor-${conta.id}" class="inv-instr-input" style="width:100px;" type="number" step="0.01" min="0" placeholder="1000"
+                onkeydown="if(event.key==='Enter')invUI.saveInstrumento('${conta.id}')"/>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-accent" style="font-size:12px;padding:6px 14px;" onclick="invUI.saveInstrumento('${conta.id}')">Adicionar</button>
+            <button class="btn" style="font-size:12px;padding:6px 14px;" onclick="invUI.toggleInstrForm('${conta.id}')">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escHTML(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function render() {
+  renderKPIs();
+  renderContas();
+}
+
+// ─── UI ───────────────────────────────────────────────────────────────────────
+const invUI = {
+
+  openModal(contaId = null) {
+    editingContaId = contaId;
+    const modal   = document.getElementById('invModalOverlay');
+    const title   = document.getElementById('invModalTitle');
+    const saveBtn = document.getElementById('invModalSaveBtn');
+
+    // Reset tipo buttons
+    document.querySelectorAll('.inv-tipo-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelector('.inv-tipo-btn[data-tipo="Corretora"]').classList.add('selected');
+
+    // Emoji picker
+    this._buildEmojiPicker('🏦');
+
+    if (contaId) {
+      const conta = state.contas.find(c => c.id === contaId);
+      if (!conta) return;
+      title.textContent   = 'Editar conta';
+      saveBtn.textContent = 'Guardar';
+      document.getElementById('invModalNome').value = conta.nome;
+      // selecionar tipo
+      document.querySelectorAll('.inv-tipo-btn').forEach(b => {
+        if (b.dataset.tipo === conta.tipo) b.classList.add('selected');
+        else b.classList.remove('selected');
+      });
+      this._buildEmojiPicker(conta.emoji);
+    } else {
+      title.textContent   = 'Nova conta';
+      saveBtn.textContent = 'Criar conta';
+      document.getElementById('invModalNome').value = '';
+    }
+
+    modal.classList.add('open');
+    setTimeout(() => document.getElementById('invModalNome').focus(), 100);
+  },
+
+  closeModal(e) {
+    if (e && e.target !== document.getElementById('invModalOverlay')) return;
+    document.getElementById('invModalOverlay').classList.remove('open');
+    editingContaId = null;
+  },
+
+  _buildEmojiPicker(selected) {
+    const picker = document.getElementById('invEmojiPicker');
+    picker.innerHTML = EMOJIS.map(e =>
+      `<button type="button" class="inv-emoji-option ${e===selected?'selected':''}"
+        onclick="invUI._selectEmoji(this,'${e}')">${e}</button>`
+    ).join('');
+  },
+
+  _selectEmoji(btn, emoji) {
+    document.querySelectorAll('.inv-emoji-option').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  },
+
+  selectTipo(btn) {
+    document.querySelectorAll('.inv-tipo-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    // sugerir emoji do tipo
+    const tipo  = btn.dataset.tipo;
+    const emoji = TIPO_EMOJI[tipo] || '📁';
+    this._buildEmojiPicker(emoji);
+  },
+
+  saveModal() {
+    const nome = document.getElementById('invModalNome').value.trim();
+    if (!nome) { document.getElementById('invModalNome').focus(); return; }
+
+    const tipo  = document.querySelector('.inv-tipo-btn.selected')?.dataset.tipo || 'Outro';
+    const emoji = document.querySelector('.inv-emoji-option.selected')?.textContent || '📊';
+
+    if (editingContaId) {
+      const conta = state.contas.find(c => c.id === editingContaId);
+      if (conta) { conta.nome = nome; conta.tipo = tipo; conta.emoji = emoji; }
+    } else {
+      state.contas.push({ id: uid(), nome, tipo, emoji, instrumentos: [] });
+    }
+
+    saveState();
+    render();
+    document.getElementById('invModalOverlay').classList.remove('open');
+    editingContaId = null;
+  },
+
+  editConta(contaId) { this.openModal(contaId); },
+
+  deleteConta(contaId) {
+    const conta = state.contas.find(c => c.id === contaId);
+    if (!conta) return;
+    const total = totalConta(conta);
+    const msg   = `Apagar a conta "${conta.nome}"${total > 0 ? ' e todos os seus instrumentos (' + fmt(total) + ')' : ''}?\n\nEsta ação não pode ser desfeita.`;
+    if (!confirm(msg)) return;
+    state.contas = state.contas.filter(c => c.id !== contaId);
+    saveState();
+    render();
+  },
+
+  toggleInstrForm(contaId) {
+    const form = document.getElementById('instr-form-' + contaId);
+    if (!form) return;
+    const isOpen = form.classList.contains('open');
+    // Fechar todos
+    document.querySelectorAll('.inv-instr-form').forEach(f => f.classList.remove('open'));
+    if (!isOpen) {
+      form.classList.add('open');
+      setTimeout(() => document.getElementById('instr-ticker-' + contaId)?.focus(), 80);
+    }
+  },
+
+  saveInstrumento(contaId) {
+    const tickerEl = document.getElementById('instr-ticker-' + contaId);
+    const nomeEl   = document.getElementById('instr-nome-' + contaId);
+    const valorEl  = document.getElementById('instr-valor-' + contaId);
+
+    const ticker = tickerEl.value.trim().toUpperCase();
+    const nome   = nomeEl.value.trim();
+    const valor  = parseFloat(valorEl.value);
+
+    if (!ticker) { tickerEl.focus(); return; }
+    if (isNaN(valor) || valor < 0) { valorEl.focus(); return; }
+
+    const conta = state.contas.find(c => c.id === contaId);
+    if (!conta) return;
+
+    conta.instrumentos.push({ id: uid(), ticker, nome, valor });
+    saveState();
+    render();
+
+    // Reabrir o form para facilitar adicionar mais
+    setTimeout(() => {
+      const form = document.getElementById('instr-form-' + contaId);
+      if (form) {
+        form.classList.add('open');
+        document.getElementById('instr-ticker-' + contaId)?.focus();
+      }
+    }, 50);
+  },
+
+  deleteInstrumento(contaId, instrId) {
+    const conta = state.contas.find(c => c.id === contaId);
+    if (!conta) return;
+    const instr = conta.instrumentos.find(i => i.id === instrId);
+    if (!instr) return;
+    if (!confirm(`Remover "${instr.ticker}" (${fmt(parseFloat(instr.valor)||0)})?`)) return;
+    conta.instrumentos = conta.instrumentos.filter(i => i.id !== instrId);
+    saveState();
+    render();
+  }
+};
+
+// Fechar modal com Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('invModalOverlay').classList.remove('open');
+});
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+loadState();
+render();
+// Tentar carregar do Drive (assíncrono, silencioso)
+driveLoad();
+</script>
+</body>
+</html>
