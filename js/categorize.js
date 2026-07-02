@@ -33,7 +33,6 @@ export function autoCategory(desc, amount) {
 
 export function normalizeCat(catBanco) {
   const c = catBanco.trim().toUpperCase();
-  if (c.includes('COMPRA') || c === 'COMPRAS') return 'Restauração';
   if (c.includes('SEGURO')) return 'Seguros';
   if (c.includes('TELE') || c.includes('TV') || c.includes('INTERNET')) return 'Telecomunicações';
   if (CATS.map(x => x.toUpperCase()).includes(c)) return CATS[CATS.map(x => x.toUpperCase()).indexOf(c)];
@@ -117,17 +116,15 @@ export function parseCSV(text) {
       else continue;
       if (!desc) continue;
 
-      const userCat = applyRules(desc);
+      const autoCat = autoCategory(desc, amount);
       let cat;
-      const isIncomingTransfer = amount > 0 && /TRF |TFI |MBWAY|TRANSFERENCIA|DEPOSITO/.test(desc.toUpperCase());
-      if (userCat) {
-        cat = userCat;
-      } else if (isIncomingTransfer) {
-        cat = 'Rendimentos';
+      if (autoCat !== 'Diversos') {
+        // Já reconhecemos algo específico (regra do utilizador, comerciante, transferência recebida, etc.) — isto ganha sempre à categoria genérica do banco
+        cat = autoCat;
       } else if (catBanco && catBanco.toLowerCase() !== 'diversos' && catBanco !== '') {
         cat = normalizeCat(catBanco);
       } else {
-        cat = autoCategory(desc, amount);
+        cat = 'Diversos';
       }
       rows.push({ date: dateISO, desc: desc.trim(), amount, cat });
     }
