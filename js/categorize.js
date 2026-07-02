@@ -9,12 +9,14 @@ export function applyRules(desc) {
   return null;
 }
 
-export function autoCategory(desc) {
+export function autoCategory(desc, amount) {
   const userCat = applyRules(desc);
   if (userCat) return userCat;
   const d = desc.toUpperCase();
   if (/SALARIO|VENCIMENTO|ORDENADO|RENDIMENTO|PENSION/.test(d)) return 'Rendimentos';
   if (/CXDAPP|CONTA POUPAN/.test(d)) return 'Rendimentos';
+  // Transferências, MB WAY e depósitos recebidos (valor positivo) contam como Rendimentos
+  if (amount > 0 && /TRF |TFI |MBWAY|TRANSFERENCIA|SEPA|DEPOSITO/.test(d)) return 'Rendimentos';
   if (/CONTINENTE|PINGO DOCE|INTERMARCHE|LIDL|ALDI|MERCADO|MINI PRECO|AUCHAN|CELEIRO|E-LECLERC|MINIPRECO/.test(d)) return 'Supermercado';
   if (/RESTAURANTE|CAFE|KFC|MCDONALDS|BURGUER|PIZZA|SUSHI|TASCA|PASTELARIA|HONEST GREENS|CAIS DO RIO|GULA|AUREA/.test(d)) return 'Restauração';
   if (/LASERUM|CABELEIREIRO|ESTETICA|ESTETICISTA|BEAUTY|BARBEIRO/.test(d)) return 'Estética';
@@ -122,7 +124,7 @@ export function parseCSV(text) {
       } else if (catBanco && catBanco.toLowerCase() !== 'diversos' && catBanco !== '') {
         cat = normalizeCat(catBanco);
       } else {
-        cat = autoCategory(desc);
+        cat = autoCategory(desc, amount);
       }
       rows.push({ date: dateISO, desc: desc.trim(), amount, cat });
     }
@@ -144,7 +146,7 @@ export function parseCSV(text) {
           const p = date.split(/[\/\-]/);
           d = p[2] + '-' + p[1] + '-' + p[0];
         }
-        rows.push({ date: d, desc, amount, cat: autoCategory(desc) });
+        rows.push({ date: d, desc, amount, cat: autoCategory(desc, amount) });
       }
     }
   }

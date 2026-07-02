@@ -497,7 +497,7 @@ window._deleteCategory = function(cat) {
 
 function reapplyCategories() {
   State.allData.forEach(r => {
-    if (!r.manual || !State.CATS.includes(r.cat)) r.cat = autoCategory(r.desc);
+    if (!r.manual || !State.CATS.includes(r.cat)) r.cat = autoCategory(r.desc, r.amount);
   });
   Storage.save();
   if (Storage.gAccessToken) Storage.scheduleDriveSave();
