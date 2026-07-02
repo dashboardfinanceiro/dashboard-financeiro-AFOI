@@ -67,8 +67,8 @@ export function load() {
       if (State.allData.length) {
         State.allData.forEach(r => {
           // migrar categorias eliminadas (ex: Restaurantes → Restauração)
-          if (!State.CATS.includes(r.cat)) { r.cat = autoCategory(r.desc, r.amount); r.manual = false; }
-          else if (!r.manual) r.cat = autoCategory(r.desc, r.amount);
+          if (!State.CATS.includes(r.cat)) { r.cat = autoCategory(r.desc); r.manual = false; }
+          else if (!r.manual) r.cat = autoCategory(r.desc);
         });
         return true;
       }
@@ -188,8 +188,8 @@ export function restorePayload(p, uiCallbacks) {
   if (p.budget) loadBudget(p.budget);
   else loadBudget();
   State.allData.forEach(r => {
-    if (!State.CATS.includes(r.cat)) { r.cat = autoCategory(r.desc, r.amount); r.manual = false; }
-    else if (!r.manual) r.cat = autoCategory(r.desc, r.amount);
+    if (!State.CATS.includes(r.cat)) { r.cat = autoCategory(r.desc); r.manual = false; }
+    else if (!r.manual) r.cat = autoCategory(r.desc);
   });
   save();
   // Callbacks de UI (injetados pelo app.js para evitar dependência circular)
@@ -339,7 +339,7 @@ export function initGoogleAuth(callbacks) {
 }
 
 export function startGoogleLogin() {
-  const redirect = 'https://dashboardfinanceiro.github.io/dashboard-financeiro';
+  const redirect = 'https://dashboardfinanceiro.github.io/dashboard-financeiro-AFOI';
   const url = 'https://accounts.google.com/o/oauth2/v2/auth' +
     '?client_id=' + encodeURIComponent(G_CLIENT_ID) +
     '&redirect_uri=' + encodeURIComponent(redirect) +

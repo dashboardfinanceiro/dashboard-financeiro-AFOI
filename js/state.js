@@ -17,7 +17,7 @@ export function setMetaInfo(val)           { metaInfo = val; }
 export function setLoadedMonths(val)       { loadedMonths = val; }
 
 // ─── Categorias ───────────────────────────────────────────────────────────────
-export let CATS = ['Restauração','Supermercado','Transportes','Saúde','Estética','Telecomunicações','Seguros','Habitação','Lazer','Restaurantes','Rendimentos','Roupa','Viagens','Poupança','Diversos'];
+export let CATS = ['Restauração','Supermercado','Transportes','Saúde','Estética','Telecomunicações','Seguros','Habitação','Lazer','Restaurantes','Rendimentos','Diversos'];
 export let CUSTOM_CATS = [];
 export let DELETED_BASE_CATS = [];
 export const CAT_COLORS = ['#1D9E75','#185FA5','#BA7517','#D4537E','#b05ec4','#533AB7','#D85A30','#8a8680','#c8440a','#e8a87c','#7ec8e3','#f0a500','#2ecc71','#95a5a6'];
@@ -75,7 +75,7 @@ export const STRATEGIES = {
 export const CAT_PILAR = {
   'Habitação': 'necessidades',
   'Supermercado': 'necessidades',
-  'Restauração': 'desejos',
+  'Restauração': 'necessidades',
   'Saúde': 'necessidades',
   'Telecomunicações': 'necessidades',
   'Seguros': 'necessidades',
@@ -83,8 +83,6 @@ export const CAT_PILAR = {
   'Lazer': 'desejos',
   'Restaurantes': 'desejos',
   'Estética': 'desejos',
-  'Roupa': 'desejos',
-  'Viagens': 'desejos',
   'Poupança': 'poupanca',
   'Transferências': 'desejos',
   'Rendimentos': null,

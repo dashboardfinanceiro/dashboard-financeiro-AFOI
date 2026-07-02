@@ -9,14 +9,12 @@ export function applyRules(desc) {
   return null;
 }
 
-export function autoCategory(desc, amount) {
+export function autoCategory(desc) {
   const userCat = applyRules(desc);
   if (userCat) return userCat;
   const d = desc.toUpperCase();
   if (/SALARIO|VENCIMENTO|ORDENADO|RENDIMENTO|PENSION/.test(d)) return 'Rendimentos';
   if (/CXDAPP|CONTA POUPAN/.test(d)) return 'Rendimentos';
-  // Transferências, MB WAY e depósitos recebidos (valor positivo) contam como Rendimentos
-  if (amount > 0 && /TRF |TFI |MBWAY|TRANSFERENCIA|DEPOSITO/.test(d)) return 'Rendimentos';
   if (/CONTINENTE|PINGO DOCE|INTERMARCHE|LIDL|ALDI|MERCADO|MINI PRECO|AUCHAN|CELEIRO|E-LECLERC|MINIPRECO/.test(d)) return 'Supermercado';
   if (/RESTAURANTE|CAFE|KFC|MCDONALDS|BURGUER|PIZZA|SUSHI|TASCA|PASTELARIA|HONEST GREENS|CAIS DO RIO|GULA|AUREA/.test(d)) return 'Restauração';
   if (/LASERUM|CABELEIREIRO|ESTETICA|ESTETICISTA|BEAUTY|BARBEIRO/.test(d)) return 'Estética';
@@ -25,7 +23,7 @@ export function autoCategory(desc, amount) {
   if (/SEGURO|FIDELIDADE|OCIDENTAL|TRANQUILIDADE|ALLIANZ/.test(d)) return 'Seguros';
   if (/RENDA|CONDOMINIO|AGUA|LUZ|GAS|EDP|ENDESA|GALP|ADA |AGUAS/.test(d)) return 'Habitação';
   if (/UBER|BOLT|CP |METRO|CARRIS|GASOLINA|PARQUE|TOLL|VIA VERDE/.test(d)) return 'Transportes';
-  if (/TRF |TFI |MBWAY|TRANSFERENCIA/.test(d)) return 'Diversos';
+  if (/TRF |TFI |MBWAY|TRANSFERENCIA|SEPA/.test(d)) return 'Diversos';
   if (/NETFLIX|SPOTIFY|AMAZON|STEAM|CINEMA|TEATRO/.test(d)) return 'Lazer';
   if (/COMPRAS|CASA BA|AVOLTA|EASYPAY/.test(d)) return 'Restauração';
   return 'Diversos';
@@ -33,6 +31,7 @@ export function autoCategory(desc, amount) {
 
 export function normalizeCat(catBanco) {
   const c = catBanco.trim().toUpperCase();
+  if (c.includes('COMPRA') || c === 'COMPRAS') return 'Restauração';
   if (c.includes('SEGURO')) return 'Seguros';
   if (c.includes('TELE') || c.includes('TV') || c.includes('INTERNET')) return 'Telecomunicações';
   if (CATS.map(x => x.toUpperCase()).includes(c)) return CATS[CATS.map(x => x.toUpperCase()).indexOf(c)];
@@ -116,15 +115,14 @@ export function parseCSV(text) {
       else continue;
       if (!desc) continue;
 
-      const autoCat = autoCategory(desc, amount);
+      const userCat = applyRules(desc);
       let cat;
-      if (autoCat !== 'Diversos') {
-        // Já reconhecemos algo específico (regra do utilizador, comerciante, transferência recebida, etc.) — isto ganha sempre à categoria genérica do banco
-        cat = autoCat;
+      if (userCat) {
+        cat = userCat;
       } else if (catBanco && catBanco.toLowerCase() !== 'diversos' && catBanco !== '') {
         cat = normalizeCat(catBanco);
       } else {
-        cat = 'Diversos';
+        cat = autoCategory(desc);
       }
       rows.push({ date: dateISO, desc: desc.trim(), amount, cat });
     }
@@ -146,7 +144,7 @@ export function parseCSV(text) {
           const p = date.split(/[\/\-]/);
           d = p[2] + '-' + p[1] + '-' + p[0];
         }
-        rows.push({ date: d, desc, amount, cat: autoCategory(desc, amount) });
+        rows.push({ date: d, desc, amount, cat: autoCategory(desc) });
       }
     }
   }
