@@ -34,7 +34,17 @@ function getFilteredData() {
 // ─── KPIs ─────────────────────────────────────────────────────────────────────
 function renderKPIs(data) {
   const ent = data.filter(r => r.amount > 0 && r.cat === 'Rendimentos').reduce((s, r) => s + r.amount, 0);
-  const sai = data.filter(r => r.amount < 0).reduce((s, r) => s + Math.abs(r.amount), 0);
+
+  // Saídas líquidas: descontar reembolsos só dentro da MESMA categoria (não globalmente)
+  const catsPresentes = new Set(data.map(r => r.cat));
+  let sai = 0;
+  catsPresentes.forEach(cat => {
+    if (cat === 'Rendimentos') return;
+    const saidasCat   = data.filter(r => r.amount < 0 && r.cat === cat).reduce((s, r) => s + Math.abs(r.amount), 0);
+    const entradasCat = data.filter(r => r.amount > 0 && r.cat === cat).reduce((s, r) => s + r.amount, 0);
+    sai += Math.max(0, saidasCat - entradasCat);
+  });
+
   document.getElementById('kpiEnt').textContent = '+' + fmtAbs(ent);
   document.getElementById('kpiEntN').textContent = '';
   document.getElementById('kpiSai').textContent = '-' + fmtAbs(sai);
@@ -316,8 +326,10 @@ function renderPilaresCards(data) {
     const pctPilar = totalSai > 0 ? (total / totalSai * 100).toFixed(1) : '0.0';
     const pctRend  = totalRend > 0 ? (total / totalRend * 100).toFixed(1) : '0.0';
     const catRows  = p.cats.map(cat => {
-      const gasto = gastoLiquidoCat(cat);
-      if (gasto === 0) return '';
+      const saidasCat    = data.filter(r => r.amount < 0 && r.cat === cat).reduce((s,r) => s + Math.abs(r.amount), 0);
+      const reembolsoCat = data.filter(r => r.amount > 0 && r.cat === cat).reduce((s,r) => s + r.amount, 0);
+      const gasto = Math.max(0, saidasCat - reembolsoCat);
+      if (saidasCat === 0 && reembolsoCat === 0) return '';
       const pctCat = total > 0 ? (gasto / total * 100).toFixed(1) : '0.0';
       const catIdx = State.CATS.indexOf(cat);
       const color  = State.CAT_COLORS[catIdx] || p.color;
@@ -342,7 +354,10 @@ function renderPilaresCards(data) {
             <span class="cat-arrow" style="font-size:10px;color:var(--muted);">▸</span>
           </td>
           <td style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;text-align:right;padding:8px 12px;white-space:nowrap;">${pctCat}%</td>
-          <td style="font-size:13px;font-family:'DM Mono',monospace;text-align:right;padding:8px 0;color:var(--red);white-space:nowrap;">-${fmtAbs(gasto)}</td>
+          <td style="font-size:13px;font-family:'DM Mono',monospace;text-align:right;padding:8px 0;white-space:nowrap;">
+            <div style="color:var(--red);">-${fmtAbs(gasto)}</div>
+            ${reembolsoCat > 0 ? `<div style="color:var(--green);font-size:10px;font-weight:500;">+${fmtAbs(reembolsoCat)} reembolso</div>` : ''}
+          </td>
         </tr>
         <tr id="${movsId}" style="display:none;"><td colspan="3" style="padding:0 0 4px 0;background:var(--surface2);">
           <table style="width:100%;border-collapse:collapse;">${movsHtml}</table>
