@@ -319,6 +319,7 @@ export function initGoogleAuth(callbacks) {
       const sess = JSON.parse(saved);
       if (sess.token && sess.savedAt && (Date.now() - sess.savedAt) < 55 * 60 * 1000) {
         gAccessToken = sess.token;
+        try { localStorage.setItem('df_gtoken', sess.token); } catch(e) {}
         document.getElementById('gSigninOverlay').style.display = 'none';
         document.getElementById('gUserChip').classList.remove('hidden');
         document.getElementById('gUserAvatar').src = sess.picture || '';
@@ -366,6 +367,7 @@ function handleOAuthCallback(callbacks) {
         picture: profile.picture || '',
         name: profile.name || 'Utilizador'
       }));
+      localStorage.setItem('df_gtoken', token);
     } catch(e) {}
     document.getElementById('gSigninOverlay').style.display = 'none';
     document.getElementById('gUserChip').classList.remove('hidden');
@@ -374,7 +376,10 @@ function handleOAuthCallback(callbacks) {
     callbacks.onLogin();
   }).catch(() => {
     gAccessToken = token;
-    try { sessionStorage.setItem('gSession', JSON.stringify({ token, savedAt: Date.now(), name: 'Utilizador', picture: '' })); } catch(e) {}
+    try {
+      sessionStorage.setItem('gSession', JSON.stringify({ token, savedAt: Date.now(), name: 'Utilizador', picture: '' }));
+      localStorage.setItem('df_gtoken', token);
+    } catch(e) {}
     document.getElementById('gSigninOverlay').style.display = 'none';
     document.getElementById('gUserChip').classList.remove('hidden');
     document.getElementById('gUserName').textContent = 'Utilizador';
@@ -386,6 +391,7 @@ function handleOAuthCallback(callbacks) {
 export function gSignOut(callbacks) {
   if (!confirm('Tens a certeza que queres sair?')) return;
   try { sessionStorage.removeItem('gSession'); } catch(e) {}
+  try { localStorage.removeItem('df_gtoken'); } catch(e) {}
   gAccessToken = null;
   gDriveFileId = null;
   callbacks.updateSessionUI();
