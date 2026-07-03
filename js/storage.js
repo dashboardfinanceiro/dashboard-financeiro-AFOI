@@ -172,7 +172,11 @@ export function restorePayload(p, uiCallbacks) {
   State.setMetaInfo(p.meta || {});
   State.setLoadedMonths(p.months || []);
   State.setUserRules(p.rules || []);
-  State.setCustomCats(p.customCats || []);
+  // Fundir categorias personalizadas em vez de substituir, para nunca perder
+  // uma categoria criada localmente que ainda não tinha sido sincronizada com o Drive
+  const localCustomCats = State.CUSTOM_CATS.slice();
+  const mergedCustomCats = Array.from(new Set([...(p.customCats || []), ...localCustomCats]));
+  State.setCustomCats(mergedCustomCats);
   State.CUSTOM_CATS.forEach(c => { if (!State.CATS.includes(c)) State.CATS.push(c); });
   if (p.deletedCats) {
     State.setDeletedBaseCats(p.deletedCats);
@@ -185,6 +189,7 @@ export function restorePayload(p, uiCallbacks) {
     });
   }
   saveRules();
+  if (mergedCustomCats.length !== (p.customCats || []).length) scheduleDriveSave();
   if (p.budget) loadBudget(p.budget);
   else loadBudget();
   State.allData.forEach(r => {

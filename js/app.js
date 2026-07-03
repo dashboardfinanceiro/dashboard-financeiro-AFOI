@@ -440,6 +440,7 @@ window._addRule = function() {
   if (createdNewCat) {
     // Garantir que a categoria fica visível e guardada mesmo sem palavra-chave preenchida
     Storage.saveRules();
+    if (Storage.gAccessToken) Storage.driveSave();
     refreshCatSelects(); renderRulesList(); renderCatChips(); reapplyCategories();
   }
   if (!kw) { document.getElementById('ruleKeyword').focus(); return; }
@@ -499,7 +500,7 @@ window._deleteCategory = function(cat) {
   State.PILARES.forEach(p => { p.cats = p.cats.filter(c => c !== cat); });
   delete State.budgetLimits[cat];
   Storage.savePilares(); Storage.saveRules(); Storage.saveBudget(); Storage.save();
-  if (Storage.gAccessToken) Storage.scheduleDriveSave();
+  if (Storage.gAccessToken) Storage.driveSave();
   refreshCatSelects(); renderRulesList(); renderCatChips(); refresh();
 };
 
