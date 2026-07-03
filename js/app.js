@@ -431,10 +431,16 @@ window._addRule = function() {
   const catSel = document.getElementById('ruleCat').value;
   const newCatInput = document.getElementById('ruleNewCat').value.trim();
   let cat = catSel;
+  let createdNewCat = false;
   if (catSel === '__new__') {
     if (!newCatInput) { document.getElementById('ruleNewCat').focus(); return; }
     cat = newCatInput.charAt(0).toUpperCase() + newCatInput.slice(1);
-    if (!State.CATS.includes(cat)) { State.CATS.push(cat); State.CUSTOM_CATS.push(cat); }
+    if (!State.CATS.includes(cat)) { State.CATS.push(cat); State.CUSTOM_CATS.push(cat); createdNewCat = true; }
+  }
+  if (createdNewCat) {
+    // Garantir que a categoria fica visível e guardada mesmo sem palavra-chave preenchida
+    Storage.saveRules();
+    refreshCatSelects(); renderRulesList(); renderCatChips(); reapplyCategories();
   }
   if (!kw) { document.getElementById('ruleKeyword').focus(); return; }
   if (State.userRules.some(r => r.keyword.toUpperCase() === kw.toUpperCase())) { alert('Já tens uma regra com essa palavra-chave.'); return; }
