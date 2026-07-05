@@ -106,14 +106,26 @@
 
 .inv-instrumento-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 5px;
   padding: 7px 6px;
   border-radius: 8px;
   transition: background 0.12s;
   cursor: default;
 }
 .inv-instrumento-row:hover { background: var(--surface2); }
+
+.inv-instr-line1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.inv-instr-line2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 2px;
+}
 
 .inv-instr-ticker {
   font-family: 'DM Mono', monospace;
@@ -377,7 +389,10 @@ header h1 { font-size: 1.25rem !important; letter-spacing: 0.02em; }
       <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">
         Perfil de risco — atual vs. objetivo
       </div>
-      <div class="inv-tipo-options" id="invPerfilOptions"><!-- preenchido por JS --></div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:var(--muted);white-space:nowrap;">Perfil objetivo:</span>
+        <div class="inv-tipo-options" id="invPerfilOptions"><!-- preenchido por JS --></div>
+      </div>
     </div>
     <div id="invPerfilDesc" style="font-size:11px;color:var(--muted);margin-bottom:12px;font-style:italic;"></div>
     <div id="invPerfilBody"><!-- preenchido por JS --></div>
@@ -655,13 +670,17 @@ function renderContas() {
     const instrHTML = conta.instrumentos.length
       ? conta.instrumentos.map(instr => `
           <div class="inv-instrumento-row" id="instr-row-${instr.id}">
-            <span class="inv-instr-ticker">${escHTML(instr.ticker)}</span>
-            <span class="inv-instr-nome">${escHTML(instr.nome || '')}</span>
-            <span class="inv-instr-tipo-badge" style="background:${(ASSET_TIPO_CORES[instr.tipo]||'#8a8680')}22;color:${ASSET_TIPO_CORES[instr.tipo]||'#8a8680'};">${escHTML(instr.tipo || 'Outro')}</span>
-            <span class="inv-instr-risco-badge" style="background:${(RISCO_CORES[instr.risco]||'#8a8680')}22;color:${RISCO_CORES[instr.risco]||'#8a8680'};" title="Nível de risco">${escHTML(instr.risco || 'Médio')}</span>
-            <span class="inv-instr-valor">${fmt(parseFloat(instr.valor)||0)}</span>
-            <button class="inv-instr-edit" onclick="invUI.editInstrumento('${conta.id}','${instr.id}')" title="Editar">✏️</button>
-            <button class="inv-instr-delete" onclick="invUI.deleteInstrumento('${conta.id}','${instr.id}')" title="Remover">×</button>
+            <div class="inv-instr-line1">
+              <span class="inv-instr-ticker">${escHTML(instr.ticker)}</span>
+              <span class="inv-instr-nome">${escHTML(instr.nome || '')}</span>
+              <span class="inv-instr-valor">${fmt(parseFloat(instr.valor)||0)}</span>
+              <button class="inv-instr-edit" onclick="invUI.editInstrumento('${conta.id}','${instr.id}')" title="Editar">✏️</button>
+              <button class="inv-instr-delete" onclick="invUI.deleteInstrumento('${conta.id}','${instr.id}')" title="Remover">×</button>
+            </div>
+            <div class="inv-instr-line2">
+              <span class="inv-instr-tipo-badge" style="background:${(ASSET_TIPO_CORES[instr.tipo]||'#8a8680')}22;color:${ASSET_TIPO_CORES[instr.tipo]||'#8a8680'};">${escHTML(instr.tipo || 'Outro')}</span>
+              <span class="inv-instr-risco-badge" style="background:${(RISCO_CORES[instr.risco]||'#8a8680')}22;color:${RISCO_CORES[instr.risco]||'#8a8680'};" title="Nível de risco">${escHTML(instr.risco || 'Médio')}</span>
+            </div>
           </div>`).join('')
       : `<div style="font-size:12px;color:var(--muted);padding:8px 6px;font-family:'DM Mono',monospace;font-style:italic;">Sem instrumentos — adiciona abaixo</div>`;
 
