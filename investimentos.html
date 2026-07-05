@@ -38,6 +38,20 @@
 }
 .inv-conta-card:hover { box-shadow: 0 2px 14px rgba(0,0,0,0.07); }
 
+.inv-dist-tipo-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+}
+.inv-instr-tipo-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
 .inv-conta-header {
   display: flex;
   align-items: center;
@@ -333,6 +347,14 @@ header h1 { font-size: 1.25rem !important; letter-spacing: 0.02em; }
     </div>
   </div>
 
+  <!-- Distribuição por tipo de ativo -->
+  <div class="inv-dist-tipo-card" id="invDistTipoCard" style="margin-bottom:1.2rem;">
+    <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">
+      Distribuição por tipo de ativo
+    </div>
+    <div id="invDistTipoBody"><!-- preenchido por JS --></div>
+  </div>
+
   <!-- Toolbar -->
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:10px;flex-wrap:wrap;">
     <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">
@@ -391,6 +413,11 @@ header h1 { font-size: 1.25rem !important; letter-spacing: 0.02em; }
 const INV_KEY = 'df_investimentos_v1';
 const EMOJIS  = ['🏦','📊','📈','💼','🛡️','💰','₿','🌍','🏠','⚡','🎯','💎','🌱','🚀','🏅'];
 const TIPO_EMOJI = { Corretora: '📊', PPR: '🛡️', Poupança: '💰', Cripto: '₿', Outro: '📁' };
+const ASSET_TIPOS = ['Ações','ETF','REIT','Obrigações','Cripto','PPR','Aforro','Outro'];
+const ASSET_TIPO_CORES = {
+  'Ações': '#185FA5', 'ETF': '#1D9E75', 'REIT': '#D85A30', 'Obrigações': '#BA7517',
+  'Cripto': '#b05ec4', 'PPR': '#533AB7', 'Aforro': '#2ecc71', 'Outro': '#8a8680'
+};
 
 let state = { contas: [] }; // { id, nome, tipo, emoji, instrumentos: [{id, ticker, nome, valor}] }
 let editingContaId = null;
@@ -558,6 +585,7 @@ function renderContas() {
           <div class="inv-instrumento-row" id="instr-row-${instr.id}">
             <span class="inv-instr-ticker">${escHTML(instr.ticker)}</span>
             <span class="inv-instr-nome">${escHTML(instr.nome || '')}</span>
+            <span class="inv-instr-tipo-badge" style="background:${(ASSET_TIPO_CORES[instr.tipo]||'#8a8680')}22;color:${ASSET_TIPO_CORES[instr.tipo]||'#8a8680'};">${escHTML(instr.tipo || 'Outro')}</span>
             <span class="inv-instr-valor">${fmt(parseFloat(instr.valor)||0)}</span>
             <button class="inv-instr-delete" onclick="invUI.deleteInstrumento('${conta.id}','${instr.id}')" title="Remover">×</button>
           </div>`).join('')
@@ -618,6 +646,12 @@ function renderContas() {
               <input id="instr-valor-${conta.id}" class="inv-instr-input" style="width:100px;" type="number" step="0.01" min="0" placeholder="1000"
                 onkeydown="if(event.key==='Enter')invUI.saveInstrumento('${conta.id}')"/>
             </div>
+            <div class="inv-instr-field" style="min-width:110px;">
+              <span class="inv-instr-label">Tipo</span>
+              <select id="instr-tipo-${conta.id}" class="inv-instr-input" style="width:110px;">
+                ${ASSET_TIPOS.map(t => `<option value="${t}">${t}</option>`).join('')}
+              </select>
+            </div>
           </div>
           <div style="display:flex;gap:6px;">
             <button class="btn btn-accent" style="font-size:12px;padding:6px 14px;" onclick="invUI.saveInstrumento('${conta.id}')">Adicionar</button>
@@ -635,7 +669,44 @@ function escHTML(s) {
 
 function render() {
   renderKPIs();
+  renderDistribuicaoTipo();
   renderContas();
+}
+
+function renderDistribuicaoTipo() {
+  const body  = document.getElementById('invDistTipoBody');
+  const total = totalGeral();
+  const allInstr = state.contas.flatMap(c => c.instrumentos);
+
+  if (!allInstr.length || total <= 0) {
+    body.innerHTML = `<div style="font-size:12px;color:var(--muted);font-style:italic;">Ainda sem instrumentos suficientes para calcular a distribuição.</div>`;
+    return;
+  }
+
+  const porTipo = {};
+  allInstr.forEach(instr => {
+    const tipo = instr.tipo || 'Outro';
+    porTipo[tipo] = (porTipo[tipo] || 0) + (parseFloat(instr.valor) || 0);
+  });
+
+  const linhas = Object.entries(porTipo)
+    .sort((a, b) => b[1] - a[1])
+    .map(([tipo, val]) => {
+      const pct = total > 0 ? (val / total * 100) : 0;
+      const cor = ASSET_TIPO_CORES[tipo] || '#8a8680';
+      return `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="width:88px;font-size:12px;color:var(--fg);flex-shrink:0;">${escHTML(tipo)}</div>
+          <div class="inv-dist-bar" style="flex:1;">
+            <div class="inv-dist-bar-fill" style="width:${Math.min(pct,100)}%;background:${cor};"></div>
+          </div>
+          <div style="width:110px;text-align:right;font-family:'DM Mono',monospace;font-size:12px;flex-shrink:0;">
+            ${pct.toFixed(1)}% · ${fmt(val)}
+          </div>
+        </div>`;
+    }).join('');
+
+  body.innerHTML = linhas;
 }
 
 // ─── UI ───────────────────────────────────────────────────────────────────────
@@ -753,10 +824,12 @@ const invUI = {
     const tickerEl = document.getElementById('instr-ticker-' + contaId);
     const nomeEl   = document.getElementById('instr-nome-' + contaId);
     const valorEl  = document.getElementById('instr-valor-' + contaId);
+    const tipoEl   = document.getElementById('instr-tipo-' + contaId);
 
     const ticker = tickerEl.value.trim().toUpperCase();
     const nome   = nomeEl.value.trim();
     const valor  = parseFloat(valorEl.value);
+    const tipo   = tipoEl ? tipoEl.value : 'Outro';
 
     if (!ticker) { tickerEl.focus(); return; }
     if (isNaN(valor) || valor < 0) { valorEl.focus(); return; }
@@ -764,7 +837,7 @@ const invUI = {
     const conta = state.contas.find(c => c.id === contaId);
     if (!conta) return;
 
-    conta.instrumentos.push({ id: uid(), ticker, nome, valor });
+    conta.instrumentos.push({ id: uid(), ticker, nome, valor, tipo });
     saveState();
     render();
 
