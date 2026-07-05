@@ -9,7 +9,7 @@ export function applyRules(desc) {
   return null;
 }
 
-export function autoCategory(desc) {
+export function autoCategory(desc, amount) {
   const userCat = applyRules(desc);
   if (userCat) return userCat;
   const d = desc.toUpperCase();
@@ -23,7 +23,7 @@ export function autoCategory(desc) {
   if (/SEGURO|FIDELIDADE|OCIDENTAL|TRANQUILIDADE|ALLIANZ/.test(d)) return 'Seguros';
   if (/RENDA|CONDOMINIO|AGUA|LUZ|GAS|EDP|ENDESA|GALP|ADA |AGUAS/.test(d)) return 'Habitação';
   if (/UBER|BOLT|CP |METRO|CARRIS|GASOLINA|PARQUE|TOLL|VIA VERDE/.test(d)) return 'Transportes';
-  if (/TRF |TFI |MBWAY|TRANSFERENCIA|SEPA/.test(d)) return 'Diversos';
+  if (/TRF |TFI |MBWAY|TRANSFERENCIA|SEPA/.test(d)) return (amount > 0) ? 'Rendimentos' : 'Diversos';
   if (/NETFLIX|SPOTIFY|AMAZON|STEAM|CINEMA|TEATRO/.test(d)) return 'Lazer';
   if (/COMPRAS|CASA BA|AVOLTA|EASYPAY/.test(d)) return 'Restauração';
   return 'Diversos';
@@ -122,7 +122,7 @@ export function parseCSV(text) {
       } else if (catBanco && catBanco.toLowerCase() !== 'diversos' && catBanco !== '') {
         cat = normalizeCat(catBanco);
       } else {
-        cat = autoCategory(desc);
+        cat = autoCategory(desc, amount);
       }
       rows.push({ date: dateISO, desc: desc.trim(), amount, cat });
     }
@@ -144,7 +144,7 @@ export function parseCSV(text) {
           const p = date.split(/[\/\-]/);
           d = p[2] + '-' + p[1] + '-' + p[0];
         }
-        rows.push({ date: d, desc, amount, cat: autoCategory(desc) });
+        rows.push({ date: d, desc, amount, cat: autoCategory(desc, amount) });
       }
     }
   }

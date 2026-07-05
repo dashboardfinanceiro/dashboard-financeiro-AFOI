@@ -67,8 +67,8 @@ export function load() {
       if (State.allData.length) {
         State.allData.forEach(r => {
           // migrar categorias eliminadas (ex: Restaurantes → Restauração)
-          if (!State.CATS.includes(r.cat)) { r.cat = autoCategory(r.desc); r.manual = false; }
-          else if (!r.manual) r.cat = autoCategory(r.desc);
+          if (!State.CATS.includes(r.cat)) { r.cat = autoCategory(r.desc, r.amount); r.manual = false; }
+          else if (!r.manual) r.cat = autoCategory(r.desc, r.amount);
         });
         return true;
       }
@@ -193,8 +193,8 @@ export function restorePayload(p, uiCallbacks) {
   if (p.budget) loadBudget(p.budget);
   else loadBudget();
   State.allData.forEach(r => {
-    if (!State.CATS.includes(r.cat)) { r.cat = autoCategory(r.desc); r.manual = false; }
-    else if (!r.manual) r.cat = autoCategory(r.desc);
+    if (!State.CATS.includes(r.cat)) { r.cat = autoCategory(r.desc, r.amount); r.manual = false; }
+    else if (!r.manual) r.cat = autoCategory(r.desc, r.amount);
   });
   save();
   // Callbacks de UI (injetados pelo app.js para evitar dependência circular)
