@@ -51,6 +51,14 @@
   border-radius: 20px;
   white-space: nowrap;
 }
+.inv-instr-risco-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+  border: 1px solid currentColor;
+}
 
 .inv-conta-header {
   display: flex;
@@ -363,6 +371,22 @@ header h1 { font-size: 1.25rem !important; letter-spacing: 0.02em; }
     <div id="invDistTipoBody"><!-- preenchido por JS --></div>
   </div>
 
+  <!-- Perfil de risco: atual vs. objetivo -->
+  <div class="inv-dist-tipo-card" id="invPerfilRiscoCard" style="margin-bottom:1.2rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">
+        Perfil de risco — atual vs. objetivo
+      </div>
+      <div class="inv-tipo-options" id="invPerfilOptions"><!-- preenchido por JS --></div>
+    </div>
+    <div id="invPerfilDesc" style="font-size:11px;color:var(--muted);margin-bottom:12px;font-style:italic;"></div>
+    <div id="invPerfilBody"><!-- preenchido por JS --></div>
+    <div style="display:flex;align-items:center;gap:14px;margin-top:6px;font-size:10px;color:var(--muted);">
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent);margin-right:4px;"></span>alocação atual</span>
+      <span><span style="display:inline-block;width:2px;height:10px;background:var(--text);margin-right:5px;vertical-align:middle;"></span>objetivo do perfil</span>
+    </div>
+  </div>
+
   <!-- Toolbar -->
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:10px;flex-wrap:wrap;">
     <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">
@@ -427,7 +451,35 @@ const ASSET_TIPO_CORES = {
   'Cripto': '#b05ec4', 'PPR': '#533AB7', 'Aforro': '#2ecc71', 'Outro': '#8a8680'
 };
 
-let state = { contas: [] }; // { id, nome, tipo, emoji, instrumentos: [{id, ticker, nome, valor, tipo}] }
+// ─── Risco por ativo ────────────────────────────────────────────────────────
+const RISCO_NIVEIS = ['Baixo','Médio','Médio-Alto','Alto'];
+const RISCO_CORES = {
+  'Baixo': '#2ecc71', 'Médio': '#e0a52c', 'Médio-Alto': '#e0722c', 'Alto': '#d43d3d'
+};
+// Sugestão automática de risco a partir do tipo de ativo (pode ser editado por instrumento)
+const TIPO_RISCO_DEFAULT = {
+  'Obrigações': 'Baixo', 'Aforro': 'Baixo', 'PPR': 'Baixo',
+  'ETF': 'Médio', 'REIT': 'Médio-Alto', 'Ações': 'Médio-Alto',
+  'Cripto': 'Alto', 'Outro': 'Médio'
+};
+
+// ─── Perfis de investidor (objetivo de alocação por nível de risco) ─────────
+const PERFIS_RISCO = {
+  'Conservador':  { 'Baixo': 70, 'Médio': 20, 'Médio-Alto': 8,  'Alto': 2  },
+  'Moderado':     { 'Baixo': 45, 'Médio': 30, 'Médio-Alto': 20, 'Alto': 5  },
+  'Equilibrado':  { 'Baixo': 25, 'Médio': 30, 'Médio-Alto': 30, 'Alto': 15 },
+  'Arrojado':     { 'Baixo': 10, 'Médio': 20, 'Médio-Alto': 40, 'Alto': 30 },
+  'Agressivo':    { 'Baixo': 5,  'Médio': 10, 'Médio-Alto': 35, 'Alto': 50 }
+};
+const PERFIL_DESC = {
+  'Conservador': 'Prioriza a preservação de capital, aceitando retornos mais baixos.',
+  'Moderado':    'Equilíbrio com preferência por estabilidade sobre crescimento.',
+  'Equilibrado': 'Divisão relativamente uniforme entre segurança e crescimento.',
+  'Arrojado':    'Prioriza o crescimento, aceitando maior volatilidade.',
+  'Agressivo':   'Foco máximo em crescimento, tolerância alta a perdas temporárias.'
+};
+
+let state = { contas: [], perfilObjetivo: 'Moderado' }; // { id, nome, tipo, emoji, instrumentos: [{id, ticker, nome, valor, tipo, risco}] }
 let editingContaId = null;
 let editingInstrId = null;
 
@@ -436,8 +488,18 @@ function loadState() {
   try {
     const raw = localStorage.getItem(INV_KEY);
     if (raw) state = JSON.parse(raw);
-  } catch(e) { state = { contas: [] }; }
+  } catch(e) { state = { contas: [], perfilObjetivo: 'Moderado' }; }
+  normalizeState();
+}
+
+// Garante que o estado tem sempre os campos esperados (perfilObjetivo, risco por instrumento)
+// — útil tanto para dados antigos no localStorage como para dados vindos do Drive.
+function normalizeState() {
   if (!Array.isArray(state.contas)) state.contas = [];
+  if (!state.perfilObjetivo || !PERFIS_RISCO[state.perfilObjetivo]) state.perfilObjetivo = 'Moderado';
+  state.contas.forEach(c => c.instrumentos.forEach(i => {
+    if (!i.risco || !RISCO_NIVEIS.includes(i.risco)) i.risco = TIPO_RISCO_DEFAULT[i.tipo] || 'Médio';
+  }));
 }
 
 function saveState() {
@@ -518,6 +580,7 @@ async function driveLoad() {
     const remote = await res.json();
     if (remote && Array.isArray(remote.contas)) {
       state = remote;
+      normalizeState();
       localStorage.setItem(INV_KEY, JSON.stringify(state));
       render();
     }
@@ -595,6 +658,7 @@ function renderContas() {
             <span class="inv-instr-ticker">${escHTML(instr.ticker)}</span>
             <span class="inv-instr-nome">${escHTML(instr.nome || '')}</span>
             <span class="inv-instr-tipo-badge" style="background:${(ASSET_TIPO_CORES[instr.tipo]||'#8a8680')}22;color:${ASSET_TIPO_CORES[instr.tipo]||'#8a8680'};">${escHTML(instr.tipo || 'Outro')}</span>
+            <span class="inv-instr-risco-badge" style="background:${(RISCO_CORES[instr.risco]||'#8a8680')}22;color:${RISCO_CORES[instr.risco]||'#8a8680'};" title="Nível de risco">${escHTML(instr.risco || 'Médio')}</span>
             <span class="inv-instr-valor">${fmt(parseFloat(instr.valor)||0)}</span>
             <button class="inv-instr-edit" onclick="invUI.editInstrumento('${conta.id}','${instr.id}')" title="Editar">✏️</button>
             <button class="inv-instr-delete" onclick="invUI.deleteInstrumento('${conta.id}','${instr.id}')" title="Remover">×</button>
@@ -658,8 +722,15 @@ function renderContas() {
             </div>
             <div class="inv-instr-field" style="min-width:110px;">
               <span class="inv-instr-label">Tipo</span>
-              <select id="instr-tipo-${conta.id}" class="inv-instr-input" style="width:110px;">
+              <select id="instr-tipo-${conta.id}" class="inv-instr-input" style="width:110px;"
+                onchange="invUI.suggestRisco('${conta.id}')">
                 ${ASSET_TIPOS.map(t => `<option value="${t}">${t}</option>`).join('')}
+              </select>
+            </div>
+            <div class="inv-instr-field" style="min-width:110px;">
+              <span class="inv-instr-label">Risco</span>
+              <select id="instr-risco-${conta.id}" class="inv-instr-input" style="width:110px;">
+                ${RISCO_NIVEIS.map(r => `<option value="${r}">${r}</option>`).join('')}
               </select>
             </div>
           </div>
@@ -680,7 +751,54 @@ function escHTML(s) {
 function render() {
   renderKPIs();
   renderDistribuicaoTipo();
+  renderPerfilRisco();
   renderContas();
+}
+
+// ─── Render Perfil de Risco (atual vs. objetivo) ──────────────────────────────
+function renderPerfilRisco() {
+  const opts = document.getElementById('invPerfilOptions');
+  opts.innerHTML = Object.keys(PERFIS_RISCO).map(nome => `
+    <button type="button" class="inv-tipo-btn ${nome === state.perfilObjetivo ? 'selected' : ''}"
+      onclick="invUI.selectPerfil('${nome}')">${nome}</button>
+  `).join('');
+
+  document.getElementById('invPerfilDesc').textContent = PERFIL_DESC[state.perfilObjetivo] || '';
+
+  const body  = document.getElementById('invPerfilBody');
+  const total = totalGeral();
+  const allInstr = state.contas.flatMap(c => c.instrumentos);
+
+  if (!allInstr.length || total <= 0) {
+    body.innerHTML = `<div style="font-size:12px;color:var(--muted);font-style:italic;">Ainda sem instrumentos suficientes para calcular o perfil de risco.</div>`;
+    return;
+  }
+
+  const porRisco = {};
+  allInstr.forEach(instr => {
+    const risco = instr.risco || 'Médio';
+    porRisco[risco] = (porRisco[risco] || 0) + (parseFloat(instr.valor) || 0);
+  });
+
+  const alvo = PERFIS_RISCO[state.perfilObjetivo] || {};
+
+  body.innerHTML = RISCO_NIVEIS.map(risco => {
+    const val = porRisco[risco] || 0;
+    const pct = total > 0 ? (val / total * 100) : 0;
+    const pctAlvo = alvo[risco] || 0;
+    const cor = RISCO_CORES[risco] || '#8a8680';
+    return `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="width:88px;font-size:12px;color:var(--fg);flex-shrink:0;">${risco}</div>
+        <div class="inv-dist-bar" style="flex:1;position:relative;overflow:visible;">
+          <div class="inv-dist-bar-fill" style="width:${Math.min(pct,100)}%;background:${cor};"></div>
+          <div style="position:absolute;top:-3px;bottom:-3px;left:${Math.min(pctAlvo,100)}%;width:2px;background:var(--text);border-radius:1px;" title="Objetivo (${state.perfilObjetivo}): ${pctAlvo}%"></div>
+        </div>
+        <div style="width:140px;text-align:right;font-family:'DM Mono',monospace;font-size:12px;flex-shrink:0;">
+          ${pct.toFixed(1)}% <span style="color:var(--muted);">· obj. ${pctAlvo}%</span>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 function renderDistribuicaoTipo() {
@@ -805,6 +923,19 @@ const invUI = {
     editingContaId = null;
   },
 
+  selectPerfil(nome) {
+    if (!PERFIS_RISCO[nome]) return;
+    state.perfilObjetivo = nome;
+    saveState();
+    renderPerfilRisco();
+  },
+
+  suggestRisco(contaId) {
+    const tipoEl  = document.getElementById('instr-tipo-' + contaId);
+    const riscoEl = document.getElementById('instr-risco-' + contaId);
+    if (tipoEl && riscoEl) riscoEl.value = TIPO_RISCO_DEFAULT[tipoEl.value] || 'Médio';
+  },
+
   editConta(contaId) { this.openModal(contaId); },
 
   deleteConta(contaId) {
@@ -830,6 +961,7 @@ const invUI = {
       document.getElementById('instr-nome-' + contaId).value = '';
       document.getElementById('instr-valor-' + contaId).value = '';
       document.getElementById('instr-tipo-' + contaId).value = 'Outro';
+      document.getElementById('instr-risco-' + contaId).value = TIPO_RISCO_DEFAULT['Outro'] || 'Médio';
       document.getElementById('instr-save-btn-' + contaId).textContent = 'Adicionar';
       form.classList.add('open');
       setTimeout(() => document.getElementById('instr-ticker-' + contaId)?.focus(), 80);
@@ -850,6 +982,7 @@ const invUI = {
     document.getElementById('instr-nome-' + contaId).value = instr.nome || '';
     document.getElementById('instr-valor-' + contaId).value = instr.valor;
     document.getElementById('instr-tipo-' + contaId).value = instr.tipo || 'Outro';
+    document.getElementById('instr-risco-' + contaId).value = instr.risco || TIPO_RISCO_DEFAULT[instr.tipo] || 'Médio';
     document.getElementById('instr-save-btn-' + contaId).textContent = 'Guardar';
     form.classList.add('open');
     setTimeout(() => document.getElementById('instr-ticker-' + contaId)?.focus(), 80);
@@ -860,11 +993,13 @@ const invUI = {
     const nomeEl   = document.getElementById('instr-nome-' + contaId);
     const valorEl  = document.getElementById('instr-valor-' + contaId);
     const tipoEl   = document.getElementById('instr-tipo-' + contaId);
+    const riscoEl  = document.getElementById('instr-risco-' + contaId);
 
     const ticker = tickerEl.value.trim().toUpperCase();
     const nome   = nomeEl.value.trim();
     const valor  = parseFloat(valorEl.value);
     const tipo   = tipoEl ? tipoEl.value : 'Outro';
+    const risco  = riscoEl ? riscoEl.value : (TIPO_RISCO_DEFAULT[tipo] || 'Médio');
 
     if (!ticker) { tickerEl.focus(); return; }
     if (isNaN(valor) || valor < 0) { valorEl.focus(); return; }
@@ -874,14 +1009,14 @@ const invUI = {
 
     if (editingInstrId) {
       const instr = conta.instrumentos.find(i => i.id === editingInstrId);
-      if (instr) { instr.ticker = ticker; instr.nome = nome; instr.valor = valor; instr.tipo = tipo; }
+      if (instr) { instr.ticker = ticker; instr.nome = nome; instr.valor = valor; instr.tipo = tipo; instr.risco = risco; }
       editingInstrId = null;
       saveState();
       render();
       return;
     }
 
-    conta.instrumentos.push({ id: uid(), ticker, nome, valor, tipo });
+    conta.instrumentos.push({ id: uid(), ticker, nome, valor, tipo, risco });
     saveState();
     render();
 
