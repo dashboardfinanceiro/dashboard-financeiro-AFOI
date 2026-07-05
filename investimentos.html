@@ -138,6 +138,14 @@
 .inv-instrumento-row:hover .inv-instr-delete { opacity: 1; }
 .inv-instr-delete:hover { color: var(--red) !important; }
 
+.inv-instr-edit {
+  opacity: 0; transition: opacity 0.15s;
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; padding: 2px 4px;
+  border-radius: 4px; line-height: 1;
+}
+.inv-instrumento-row:hover .inv-instr-edit { opacity: 1; }
+
 /* Botão + instrumento */
 .inv-add-instr-btn {
   display: flex; align-items: center; gap: 6px;
@@ -419,8 +427,9 @@ const ASSET_TIPO_CORES = {
   'Cripto': '#b05ec4', 'PPR': '#533AB7', 'Aforro': '#2ecc71', 'Outro': '#8a8680'
 };
 
-let state = { contas: [] }; // { id, nome, tipo, emoji, instrumentos: [{id, ticker, nome, valor}] }
+let state = { contas: [] }; // { id, nome, tipo, emoji, instrumentos: [{id, ticker, nome, valor, tipo}] }
 let editingContaId = null;
+let editingInstrId = null;
 
 // ─── Persistência ─────────────────────────────────────────────────────────────
 function loadState() {
@@ -587,6 +596,7 @@ function renderContas() {
             <span class="inv-instr-nome">${escHTML(instr.nome || '')}</span>
             <span class="inv-instr-tipo-badge" style="background:${(ASSET_TIPO_CORES[instr.tipo]||'#8a8680')}22;color:${ASSET_TIPO_CORES[instr.tipo]||'#8a8680'};">${escHTML(instr.tipo || 'Outro')}</span>
             <span class="inv-instr-valor">${fmt(parseFloat(instr.valor)||0)}</span>
+            <button class="inv-instr-edit" onclick="invUI.editInstrumento('${conta.id}','${instr.id}')" title="Editar">✏️</button>
             <button class="inv-instr-delete" onclick="invUI.deleteInstrumento('${conta.id}','${instr.id}')" title="Remover">×</button>
           </div>`).join('')
       : `<div style="font-size:12px;color:var(--muted);padding:8px 6px;font-family:'DM Mono',monospace;font-style:italic;">Sem instrumentos — adiciona abaixo</div>`;
@@ -654,7 +664,7 @@ function renderContas() {
             </div>
           </div>
           <div style="display:flex;gap:6px;">
-            <button class="btn btn-accent" style="font-size:12px;padding:6px 14px;" onclick="invUI.saveInstrumento('${conta.id}')">Adicionar</button>
+            <button class="btn btn-accent" style="font-size:12px;padding:6px 14px;" id="instr-save-btn-${conta.id}" onclick="invUI.saveInstrumento('${conta.id}')">Adicionar</button>
             <button class="btn" style="font-size:12px;padding:6px 14px;" onclick="invUI.toggleInstrForm('${conta.id}')">Cancelar</button>
           </div>
         </div>
@@ -814,10 +824,35 @@ const invUI = {
     const isOpen = form.classList.contains('open');
     // Fechar todos
     document.querySelectorAll('.inv-instr-form').forEach(f => f.classList.remove('open'));
+    editingInstrId = null;
     if (!isOpen) {
+      document.getElementById('instr-ticker-' + contaId).value = '';
+      document.getElementById('instr-nome-' + contaId).value = '';
+      document.getElementById('instr-valor-' + contaId).value = '';
+      document.getElementById('instr-tipo-' + contaId).value = 'Outro';
+      document.getElementById('instr-save-btn-' + contaId).textContent = 'Adicionar';
       form.classList.add('open');
       setTimeout(() => document.getElementById('instr-ticker-' + contaId)?.focus(), 80);
     }
+  },
+
+  editInstrumento(contaId, instrId) {
+    const conta = state.contas.find(c => c.id === contaId);
+    if (!conta) return;
+    const instr = conta.instrumentos.find(i => i.id === instrId);
+    if (!instr) return;
+
+    document.querySelectorAll('.inv-instr-form').forEach(f => f.classList.remove('open'));
+    editingInstrId = instrId;
+
+    const form = document.getElementById('instr-form-' + contaId);
+    document.getElementById('instr-ticker-' + contaId).value = instr.ticker;
+    document.getElementById('instr-nome-' + contaId).value = instr.nome || '';
+    document.getElementById('instr-valor-' + contaId).value = instr.valor;
+    document.getElementById('instr-tipo-' + contaId).value = instr.tipo || 'Outro';
+    document.getElementById('instr-save-btn-' + contaId).textContent = 'Guardar';
+    form.classList.add('open');
+    setTimeout(() => document.getElementById('instr-ticker-' + contaId)?.focus(), 80);
   },
 
   saveInstrumento(contaId) {
@@ -836,6 +871,15 @@ const invUI = {
 
     const conta = state.contas.find(c => c.id === contaId);
     if (!conta) return;
+
+    if (editingInstrId) {
+      const instr = conta.instrumentos.find(i => i.id === editingInstrId);
+      if (instr) { instr.ticker = ticker; instr.nome = nome; instr.valor = valor; instr.tipo = tipo; }
+      editingInstrId = null;
+      saveState();
+      render();
+      return;
+    }
 
     conta.instrumentos.push({ id: uid(), ticker, nome, valor, tipo });
     saveState();
@@ -858,6 +902,7 @@ const invUI = {
     if (!instr) return;
     if (!confirm(`Remover "${instr.ticker}" (${fmt(parseFloat(instr.valor)||0)})?`)) return;
     conta.instrumentos = conta.instrumentos.filter(i => i.id !== instrId);
+    if (editingInstrId === instrId) editingInstrId = null;
     saveState();
     render();
   }
