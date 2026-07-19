@@ -330,6 +330,15 @@
 }
 .inv-saved-pill.show { opacity: 1; }
 
+/* Aviso de erro de sincronização com o Drive */
+.inv-sync-error-pill {
+  font-size: 11px; color: #c0392b;
+  font-family: 'DM Mono', monospace;
+  opacity: 0; transition: opacity 0.4s;
+  cursor: help;
+}
+.inv-sync-error-pill.show { opacity: 1; }
+
 @media (max-width: 640px) {
   .inv-contas-grid { grid-template-columns: 1fr; }
   .inv-kpi-grid { grid-template-columns: 1fr 1fr; }
@@ -368,6 +377,7 @@ header h1 { font-size: 1.25rem !important; letter-spacing: 0.02em; }
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
     <span id="invSavedPill" class="inv-saved-pill">✓ guardado</span>
+    <span id="invSyncErrorPill" class="inv-sync-error-pill"></span>
     <div id="gUserChip" class="g-user-chip hidden">
       <img id="gUserAvatar" class="g-user-avatar" src="" alt=""/>
       <span id="gUserName"></span>
@@ -580,6 +590,19 @@ function showSavedPill() {
   el._t = setTimeout(() => el.classList.remove('show'), 2000);
 }
 
+function showSyncError(motivo) {
+  const el = document.getElementById('invSyncErrorPill');
+  el.textContent = '⚠️ não sincronizado com o Drive';
+  el.title = motivo || 'Erro desconhecido — os dados só ficaram guardados neste browser.';
+  el.classList.add('show');
+  // fica visível até haver uma sincronização com sucesso (não desaparece sozinho)
+}
+
+function clearSyncError() {
+  const el = document.getElementById('invSyncErrorPill');
+  el.classList.remove('show');
+}
+
 // ─── Google Drive sync ────────────────────────────────────────────────────────
 // Lê token do localStorage do dashboard principal (mesma origem)
 function getDriveToken() {
@@ -594,13 +617,14 @@ function scheduleDriveSync() {
 
 async function driveSave() {
   const token = getDriveToken();
-  if (!token) return;
+  if (!token) { showSyncError('Sem sessão Google ativa — os dados só estão guardados neste browser.'); return; }
   try {
     // Encontrar ou criar ficheiro
     const search = await fetch(
       `https://www.googleapis.com/drive/v3/files?q=name%3D'df_investimentos.json'+and+trashed%3Dfalse&spaces=appDataFolder`,
       { headers: { Authorization: 'Bearer ' + token } }
     );
+    if (!search.ok) throw new Error(`Pesquisa no Drive falhou: HTTP ${search.status}`);
     const sData = await search.json();
     const content = JSON.stringify(state);
     const blob    = new Blob([content], { type: 'application/json' });
@@ -609,21 +633,27 @@ async function driveSave() {
     form.append('metadata', new Blob([meta], { type: 'application/json' }));
     form.append('file', blob);
 
+    let uploadRes;
     if (sData.files && sData.files.length > 0) {
       const fid = sData.files[0].id;
       const upd = new FormData();
       upd.append('file', blob);
-      await fetch(
+      uploadRes = await fetch(
         `https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=multipart`,
         { method: 'PATCH', headers: { Authorization: 'Bearer ' + token }, body: upd }
       );
     } else {
-      await fetch(
+      uploadRes = await fetch(
         'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
         { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form }
       );
     }
-  } catch(e) { /* silencioso se token expirado */ }
+    if (!uploadRes.ok) throw new Error(`Upload para o Drive falhou: HTTP ${uploadRes.status}`);
+    clearSyncError();
+  } catch(e) {
+    console.error('investimentos: falha ao sincronizar com o Drive:', e);
+    showSyncError(e.message);
+  }
 }
 
 async function driveLoad() {
@@ -634,13 +664,18 @@ async function driveLoad() {
       `https://www.googleapis.com/drive/v3/files?q=name%3D'df_investimentos.json'+and+trashed%3Dfalse&spaces=appDataFolder`,
       { headers: { Authorization: 'Bearer ' + token } }
     );
+    if (!search.ok) throw new Error(`Pesquisa no Drive falhou: HTTP ${search.status}`);
     const sData = await search.json();
-    if (!sData.files || !sData.files.length) return;
+    if (!sData.files || !sData.files.length) {
+      console.info('investimentos: ainda não existe ficheiro de investimentos no Drive para esta conta.');
+      return;
+    }
     const fid = sData.files[0].id;
     const res = await fetch(
       `https://www.googleapis.com/drive/v3/files/${fid}?alt=media`,
       { headers: { Authorization: 'Bearer ' + token } }
     );
+    if (!res.ok) throw new Error(`Leitura do ficheiro no Drive falhou: HTTP ${res.status}`);
     const remote = await res.json();
     if (remote && Array.isArray(remote.contas)) {
       const remoteModifiedAt = typeof remote._modifiedAt === 'number' ? remote._modifiedAt : 0;
@@ -660,7 +695,11 @@ async function driveLoad() {
         driveSave();
       }
     }
-  } catch(e) { /* se Drive falha, usa localStorage */ }
+    clearSyncError();
+  } catch(e) {
+    console.error('investimentos: falha ao carregar do Drive:', e);
+    showSyncError(e.message);
+  }
 }
 
 // ─── Cálculos ─────────────────────────────────────────────────────────────────
