@@ -542,6 +542,8 @@ const PERFIL_DESC = {
 let state = { contas: [], perfilObjetivo: 'Moderado' }; // { id, nome, tipo, emoji, instrumentos: [{id, ticker, nome, valor, tipo, risco}] }
 let editingContaId = null;
 let editingInstrId = null;
+let editingAporteId = null;
+let editingValorizacaoId = null;
 
 // ─── Persistência ─────────────────────────────────────────────────────────────
 function loadState() {
@@ -820,10 +822,18 @@ function renderContas() {
               </button>
             </div>
             <div class="inv-aportes-panel" id="aportes-panel-${instr.id}">
-              ${aportes.length ? aportes.map(a => `
+              ${aportes.length ? aportes.map(a => a.id === editingAporteId ? `
+                <div class="inv-aporte-row" style="gap:8px;">
+                  <input id="edit-aporte-data-${a.id}" class="inv-instr-input" style="width:150px;" type="date" value="${a.data}"/>
+                  <input id="edit-aporte-valor-${a.id}" class="inv-instr-input" style="width:90px;" type="number" step="0.01" min="0" value="${parseFloat(a.valor)||0}"
+                    onkeydown="if(event.key==='Enter')invUI.saveEditAporte('${conta.id}','${instr.id}','${a.id}')"/>
+                  <button class="btn btn-accent" style="font-size:11px;padding:4px 10px;" onclick="invUI.saveEditAporte('${conta.id}','${instr.id}','${a.id}')">Guardar</button>
+                  <button class="btn" style="font-size:11px;padding:4px 10px;" onclick="invUI.cancelEditAporte()">Cancelar</button>
+                </div>` : `
                 <div class="inv-aporte-row">
                   <span class="inv-aporte-data">${mesLabel(a.data)}</span>
                   <span class="inv-aporte-valor">${fmt(parseFloat(a.valor)||0)}</span>
+                  <button class="inv-instr-edit" style="opacity:1;" onclick="invUI.editAporte('${a.id}')" title="Editar aporte">✏️</button>
                   <button class="inv-instr-delete" style="opacity:1;" onclick="invUI.deleteAporte('${conta.id}','${instr.id}','${a.id}')" title="Remover aporte">×</button>
                 </div>`).join('')
                 : `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:4px 0;">Ainda sem valores registados.</div>`}
@@ -842,10 +852,18 @@ function renderContas() {
               </div>
             </div>
             <div class="inv-aportes-panel" id="valorizacoes-panel-${instr.id}">
-              ${valorizacoes.length ? valorizacoes.map(v => `
+              ${valorizacoes.length ? valorizacoes.map(v => v.id === editingValorizacaoId ? `
+                <div class="inv-aporte-row" style="gap:8px;">
+                  <input id="edit-valorizacao-data-${v.id}" class="inv-instr-input" style="width:150px;" type="date" value="${v.data}"/>
+                  <input id="edit-valorizacao-valor-${v.id}" class="inv-instr-input" style="width:90px;" type="number" step="0.01" min="0" value="${parseFloat(v.valor)||0}"
+                    onkeydown="if(event.key==='Enter')invUI.saveEditValorizacao('${conta.id}','${instr.id}','${v.id}')"/>
+                  <button class="btn btn-accent" style="font-size:11px;padding:4px 10px;" onclick="invUI.saveEditValorizacao('${conta.id}','${instr.id}','${v.id}')">Guardar</button>
+                  <button class="btn" style="font-size:11px;padding:4px 10px;" onclick="invUI.cancelEditValorizacao()">Cancelar</button>
+                </div>` : `
                 <div class="inv-aporte-row">
                   <span class="inv-aporte-data">${mesLabel(v.data)}</span>
                   <span class="inv-aporte-valor">${fmt(parseFloat(v.valor)||0)}</span>
+                  <button class="inv-instr-edit" style="opacity:1;" onclick="invUI.editValorizacao('${v.id}')" title="Editar valorização">✏️</button>
                   <button class="inv-instr-delete" style="opacity:1;" onclick="invUI.deleteValorizacao('${conta.id}','${instr.id}','${v.id}')" title="Remover valorização">×</button>
                 </div>`).join('')
                 : `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:4px 0;">Ainda sem atualizações de valor registadas.</div>`}
@@ -1287,6 +1305,49 @@ const invUI = {
     }, 30);
   },
 
+  editAporte(aporteId) {
+    editingAporteId = aporteId;
+    render();
+  },
+
+  cancelEditAporte() {
+    editingAporteId = null;
+    render();
+  },
+
+  saveEditAporte(contaId, instrId, aporteId) {
+    const conta = state.contas.find(c => c.id === contaId);
+    if (!conta) return;
+    const instr = conta.instrumentos.find(i => i.id === instrId);
+    if (!instr) return;
+    const aporte = (instr.aportes || []).find(a => a.id === aporteId);
+    if (!aporte) return;
+
+    const dataEl  = document.getElementById('edit-aporte-data-' + aporteId);
+    const valorEl = document.getElementById('edit-aporte-valor-' + aporteId);
+    const data  = dataEl.value;
+    const valor = parseFloat(valorEl.value);
+
+    if (!data) { dataEl.focus(); return; }
+    if (isNaN(valor) || valor <= 0) { valorEl.focus(); return; }
+
+    aporte.data  = data;
+    aporte.valor = valor;
+
+    // Se o valor atual ainda segue automaticamente o dinheiro investido, atualiza-o também
+    if (!instr.historicoValor || !instr.historicoValor.length) {
+      instr.valor = totalAportadoInstr(instr);
+    }
+
+    editingAporteId = null;
+    saveState();
+    render();
+    setTimeout(() => {
+      const panel = document.getElementById('aportes-panel-' + instrId);
+      if (panel) panel.classList.add('open');
+    }, 30);
+  },
+
   deleteAporte(contaId, instrId, aporteId) {
     const conta = state.contas.find(c => c.id === contaId);
     if (!conta) return;
@@ -1335,6 +1396,48 @@ const invUI = {
     saveState();
     render();
 
+    setTimeout(() => {
+      const panel = document.getElementById('valorizacoes-panel-' + instrId);
+      if (panel) panel.classList.add('open');
+    }, 30);
+  },
+
+  editValorizacao(valorizacaoId) {
+    editingValorizacaoId = valorizacaoId;
+    render();
+  },
+
+  cancelEditValorizacao() {
+    editingValorizacaoId = null;
+    render();
+  },
+
+  saveEditValorizacao(contaId, instrId, valorizacaoId) {
+    const conta = state.contas.find(c => c.id === contaId);
+    if (!conta) return;
+    const instr = conta.instrumentos.find(i => i.id === instrId);
+    if (!instr) return;
+    const valorizacao = (instr.historicoValor || []).find(v => v.id === valorizacaoId);
+    if (!valorizacao) return;
+
+    const dataEl  = document.getElementById('edit-valorizacao-data-' + valorizacaoId);
+    const valorEl = document.getElementById('edit-valorizacao-valor-' + valorizacaoId);
+    const data  = dataEl.value;
+    const valor = parseFloat(valorEl.value);
+
+    if (!data) { dataEl.focus(); return; }
+    if (isNaN(valor) || valor < 0) { valorEl.focus(); return; }
+
+    valorizacao.data  = data;
+    valorizacao.valor = valor;
+
+    // O valor atual do instrumento segue sempre a valorização mais recente
+    const maisRecente = instr.historicoValor.slice().sort((a, b) => b.data.localeCompare(a.data))[0];
+    instr.valor = parseFloat(maisRecente.valor) || 0;
+
+    editingValorizacaoId = null;
+    saveState();
+    render();
     setTimeout(() => {
       const panel = document.getElementById('valorizacoes-panel-' + instrId);
       if (panel) panel.classList.add('open');
