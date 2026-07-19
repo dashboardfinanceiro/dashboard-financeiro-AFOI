@@ -671,7 +671,7 @@ async function driveLoad() {
 
 // ─── Cálculos ─────────────────────────────────────────────────────────────────
 function totalConta(conta) {
-  return conta.instrumentos.reduce((s, i) => s + (parseFloat(i.valor) || 0), 0);
+  return conta.instrumentos.reduce((s, i) => s + valorAtualInstr(i), 0);
 }
 
 function totalGeral() {
@@ -680,6 +680,24 @@ function totalGeral() {
 
 function totalAportadoInstr(instr) {
   return (instr.aportes || []).reduce((s, a) => s + (parseFloat(a.valor) || 0), 0);
+}
+
+// Fonte única de verdade para o "valor atual" de um instrumento.
+// Em vez de confiar num campo instr.valor que é escrito em vários sítios
+// diferentes do código (e pode ficar desalinhado), calculamos sempre a
+// partir dos dados originais:
+//   1) se há valorizações manuais registadas -> usa a mais recente
+//   2) senão, se há dinheiro investido registado -> usa a soma desses aportes
+//   3) senão -> usa o valor definido manualmente no instrumento
+function valorAtualInstr(instr) {
+  const historico = instr.historicoValor || [];
+  if (historico.length) {
+    const maisRecente = historico.slice().sort((a, b) => b.data.localeCompare(a.data))[0];
+    return parseFloat(maisRecente.valor) || 0;
+  }
+  const aportado = totalAportadoInstr(instr);
+  if ((instr.aportes || []).length) return aportado;
+  return parseFloat(instr.valor) || 0;
 }
 
 function totalAportadoGeral() {
@@ -722,8 +740,8 @@ function renderKPIs() {
   document.getElementById('kpiNInstr').textContent  = nInstr;
 
   if (allInstr.length) {
-    const top = allInstr.reduce((a, b) => (parseFloat(b.valor)||0) > (parseFloat(a.valor)||0) ? b : a);
-    document.getElementById('kpiMaior').textContent    = fmt(parseFloat(top.valor)||0);
+    const top = allInstr.reduce((a, b) => valorAtualInstr(b) > valorAtualInstr(a) ? b : a);
+    document.getElementById('kpiMaior').textContent    = fmt(valorAtualInstr(top));
     document.getElementById('kpiMaiorNome').textContent = top.ticker + (top.nome ? ' · ' + top.nome : '') + ' (' + top.contaNome + ')';
   } else {
     document.getElementById('kpiMaior').textContent    = '—';
@@ -787,7 +805,7 @@ function renderContas() {
             <div class="inv-instr-line1">
               <span class="inv-instr-ticker">${escHTML(instr.ticker)}</span>
               <span class="inv-instr-nome">${escHTML(instr.nome || '')}</span>
-              <span class="inv-instr-valor">${fmt(parseFloat(instr.valor)||0)}</span>
+              <span class="inv-instr-valor">${fmt(valorAtualInstr(instr))}</span>
               <button class="inv-instr-edit" onclick="invUI.editInstrumento('${conta.id}','${instr.id}')" title="Editar">✏️</button>
               <button class="inv-instr-delete" onclick="invUI.deleteInstrumento('${conta.id}','${instr.id}')" title="Remover">×</button>
             </div>
@@ -961,7 +979,7 @@ function renderPerfilRisco() {
   const porRisco = {};
   allInstr.forEach(instr => {
     const risco = instr.risco || 'Médio';
-    porRisco[risco] = (porRisco[risco] || 0) + (parseFloat(instr.valor) || 0);
+    porRisco[risco] = (porRisco[risco] || 0) + valorAtualInstr(instr);
   });
 
   const alvo = PERFIS_RISCO[state.perfilObjetivo] || {};
@@ -1000,7 +1018,7 @@ function renderDistribuicaoTipo() {
   const porTipo = {};
   allInstr.forEach(instr => {
     const tipo = instr.tipo || 'Outro';
-    porTipo[tipo] = (porTipo[tipo] || 0) + (parseFloat(instr.valor) || 0);
+    porTipo[tipo] = (porTipo[tipo] || 0) + valorAtualInstr(instr);
   });
 
   const linhas = Object.entries(porTipo)
@@ -1166,7 +1184,7 @@ const invUI = {
     const form = document.getElementById('instr-form-' + contaId);
     document.getElementById('instr-ticker-' + contaId).value = instr.ticker;
     document.getElementById('instr-nome-' + contaId).value = instr.nome || '';
-    document.getElementById('instr-valor-' + contaId).value = instr.valor;
+    document.getElementById('instr-valor-' + contaId).value = valorAtualInstr(instr);
     document.getElementById('instr-tipo-' + contaId).value = instr.tipo || 'Outro';
     document.getElementById('instr-risco-' + contaId).value = instr.risco || TIPO_RISCO_DEFAULT[instr.tipo] || 'Médio';
     document.getElementById('instr-save-btn-' + contaId).textContent = 'Guardar';
@@ -1221,7 +1239,7 @@ const invUI = {
     if (!conta) return;
     const instr = conta.instrumentos.find(i => i.id === instrId);
     if (!instr) return;
-    if (!confirm(`Remover "${instr.ticker}" (${fmt(parseFloat(instr.valor)||0)})?`)) return;
+    if (!confirm(`Remover "${instr.ticker}" (${fmt(valorAtualInstr(instr))})?`)) return;
     conta.instrumentos = conta.instrumentos.filter(i => i.id !== instrId);
     if (editingInstrId === instrId) editingInstrId = null;
     saveState();
