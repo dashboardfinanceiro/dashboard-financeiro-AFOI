@@ -442,7 +442,7 @@ header h1 { font-size: 1.25rem !important; letter-spacing: 0.02em; }
     <div id="invPerfilDesc" style="font-size:11px;color:var(--muted);margin-bottom:12px;font-style:italic;"></div>
     <div id="invPerfilBody"><!-- preenchido por JS --></div>
     <div style="display:flex;align-items:center;gap:14px;margin-top:6px;font-size:10px;color:var(--muted);">
-      <span><span style="display:inline-block;width:14px;height:8px;border-radius:2px;background:#8a868044;margin-right:4px;vertical-align:middle;"></span>zona objetivo (perfil)</span>
+      <span><span style="display:inline-block;width:2px;height:12px;background:var(--fg);opacity:0.5;margin-right:6px;vertical-align:middle;"></span>objetivo (perfil)</span>
       <span><span style="display:inline-block;width:14px;height:8px;border-radius:2px;background:#8a8680;margin-right:4px;vertical-align:middle;"></span>a tua alocação atual</span>
     </div>
   </div>
@@ -1013,8 +1013,8 @@ function renderPerfilRisco() {
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
         <div style="width:88px;font-size:12px;color:var(--fg);flex-shrink:0;">${risco}</div>
         <div class="inv-dist-bar" style="flex:1;position:relative;overflow:visible;">
-          <div style="position:absolute;top:0;bottom:0;left:0;width:${Math.min(pctAlvo,100)}%;background:${cor}2A;border-radius:3px;"></div>
-          <div style="position:absolute;top:0;bottom:0;left:0;width:${Math.min(pct,100)}%;background:${cor};border-radius:3px;"></div>
+          <div class="inv-dist-bar-fill" style="width:${Math.min(pct,100)}%;background:${cor};"></div>
+          <div style="position:absolute;top:-3px;bottom:-3px;left:${Math.min(pctAlvo,100)}%;width:2px;background:var(--fg);opacity:0.5;border-radius:1px;" title="Objetivo: ${pctAlvo}%"></div>
         </div>
         <div style="width:190px;text-align:right;font-family:'DM Mono',monospace;font-size:12px;flex-shrink:0;">
           ${pct.toFixed(1)}% <span style="color:var(--muted);">(obj. ${pctAlvo}%, ${diffTxt})</span>
