@@ -158,6 +158,41 @@
 .inv-instrumento-row:hover .inv-instr-delete { opacity: 1; }
 .inv-instr-delete:hover { color: var(--red) !important; }
 
+/* Aportes mensais */
+.inv-aportes-toggle {
+  background: none; border: none; cursor: pointer;
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  color: var(--muted); padding: 2px 6px; border-radius: 10px;
+  transition: background 0.15s, color 0.15s;
+  margin-left: auto;
+}
+.inv-aportes-toggle:hover { background: var(--surface2); color: var(--accent); }
+
+.inv-aportes-panel {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 4px 0 8px;
+}
+.inv-aportes-panel.open { display: flex; }
+
+.inv-aporte-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; padding: 2px 0;
+}
+.inv-aporte-data {
+  font-family: 'DM Mono', monospace; color: var(--muted);
+  min-width: 62px;
+}
+.inv-aporte-valor {
+  font-family: 'DM Mono', monospace; font-weight: 500;
+  color: var(--text); flex: 1;
+}
+
 .inv-instr-edit {
   opacity: 0; transition: opacity 0.15s;
   background: none; border: none; cursor: pointer;
@@ -373,6 +408,16 @@ header h1 { font-size: 1.25rem !important; letter-spacing: 0.02em; }
       <div class="kpi-val neu" id="kpiTopConta">—</div>
       <div class="kpi-sub" id="kpiTopContaPct">—</div>
     </div>
+    <div class="kpi">
+      <div class="kpi-label">Total Aportado</div>
+      <div class="kpi-val neu" id="kpiAportado">0,00 €</div>
+      <div class="kpi-sub">soma de todos os aportes</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Ganho / Perda</div>
+      <div class="kpi-val pos" id="kpiGanho">0,00 €</div>
+      <div class="kpi-sub" id="kpiGanhoPct">—</div>
+    </div>
   </div>
 
   <!-- Distribuição por tipo de ativo -->
@@ -515,6 +560,7 @@ function normalizeState() {
   if (typeof state._modifiedAt !== 'number') state._modifiedAt = 0; // dados antigos sem timestamp = mais velhos que tudo
   state.contas.forEach(c => c.instrumentos.forEach(i => {
     if (!i.risco || !RISCO_NIVEIS.includes(i.risco)) i.risco = TIPO_RISCO_DEFAULT[i.tipo] || 'Médio';
+    if (!Array.isArray(i.aportes)) i.aportes = [];
   }));
 }
 
@@ -625,6 +671,22 @@ function totalGeral() {
   return state.contas.reduce((s, c) => s + totalConta(c), 0);
 }
 
+function totalAportadoInstr(instr) {
+  return (instr.aportes || []).reduce((s, a) => s + (parseFloat(a.valor) || 0), 0);
+}
+
+function totalAportadoGeral() {
+  return state.contas.reduce((s, c) => s + c.instrumentos.reduce((s2, i) => s2 + totalAportadoInstr(i), 0), 0);
+}
+
+function mesLabel(ym) {
+  // ym no formato 'YYYY-MM'
+  if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return ym || '';
+  const [y, m] = ym.split('-');
+  const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return nomes[parseInt(m, 10) - 1] + ' ' + y;
+}
+
 function fmt(n) {
   return n.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
@@ -662,6 +724,23 @@ function renderKPIs() {
     document.getElementById('kpiTopConta').textContent   = '—';
     document.getElementById('kpiTopContaPct').textContent = '—';
   }
+
+  const aportado = totalAportadoGeral();
+  document.getElementById('kpiAportado').textContent = fmt(aportado);
+
+  const ganhoEl    = document.getElementById('kpiGanho');
+  const ganhoPctEl = document.getElementById('kpiGanhoPct');
+  if (aportado > 0) {
+    const ganho = total - aportado;
+    const ganhoPct = (ganho / aportado * 100);
+    ganhoEl.textContent = (ganho >= 0 ? '+' : '') + fmt(ganho);
+    ganhoEl.className = 'kpi-val ' + (ganho >= 0 ? 'pos' : 'neg');
+    ganhoPctEl.textContent = (ganhoPct >= 0 ? '+' : '') + ganhoPct.toFixed(1) + '% face ao aportado';
+  } else {
+    ganhoEl.textContent = '—';
+    ganhoEl.className = 'kpi-val neu';
+    ganhoPctEl.textContent = 'regista aportes para calcular';
+  }
 }
 
 // ─── Render Grid ──────────────────────────────────────────────────────────────
@@ -682,7 +761,11 @@ function renderContas() {
     const tot  = totalConta(conta);
     const pct  = total > 0 ? (tot / total * 100) : 0;
     const instrHTML = conta.instrumentos.length
-      ? conta.instrumentos.map(instr => `
+      ? conta.instrumentos.map(instr => {
+          const aportado = totalAportadoInstr(instr);
+          const aportes = (instr.aportes || []).slice().sort((a, b) => b.data.localeCompare(a.data));
+          const nAportes = aportes.length;
+          return `
           <div class="inv-instrumento-row" id="instr-row-${instr.id}">
             <div class="inv-instr-line1">
               <span class="inv-instr-ticker">${escHTML(instr.ticker)}</span>
@@ -694,8 +777,34 @@ function renderContas() {
             <div class="inv-instr-line2">
               <span class="inv-instr-tipo-badge" style="background:${(ASSET_TIPO_CORES[instr.tipo]||'#8a8680')}22;color:${ASSET_TIPO_CORES[instr.tipo]||'#8a8680'};">${escHTML(instr.tipo || 'Outro')}</span>
               <span class="inv-instr-risco-badge" style="background:${(RISCO_CORES[instr.risco]||'#8a8680')}22;color:${RISCO_CORES[instr.risco]||'#8a8680'};" title="Nível de risco">${escHTML(instr.risco || 'Médio')}</span>
+              <button class="inv-aportes-toggle" onclick="invUI.toggleAportes('${instr.id}')">
+                📅 aportes${nAportes ? ' (' + nAportes + ')' : ''}${aportado > 0 ? ' · ' + fmt(aportado) + ' aportado' : ''}
+              </button>
             </div>
-          </div>`).join('')
+            <div class="inv-aportes-panel" id="aportes-panel-${instr.id}">
+              ${aportes.length ? aportes.map(a => `
+                <div class="inv-aporte-row">
+                  <span class="inv-aporte-data">${mesLabel(a.data)}</span>
+                  <span class="inv-aporte-valor">${fmt(parseFloat(a.valor)||0)}</span>
+                  <button class="inv-instr-delete" style="opacity:1;" onclick="invUI.deleteAporte('${conta.id}','${instr.id}','${a.id}')" title="Remover aporte">×</button>
+                </div>`).join('')
+                : `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:4px 0;">Ainda sem aportes registados.</div>`}
+              <div class="inv-instr-form-row" style="margin-top:6px;">
+                <div class="inv-instr-field">
+                  <span class="inv-instr-label">Mês</span>
+                  <input id="aporte-mes-${instr.id}" class="inv-instr-input" style="width:130px;" type="month"
+                    value="${new Date().toISOString().slice(0,7)}"/>
+                </div>
+                <div class="inv-instr-field">
+                  <span class="inv-instr-label">Valor (€)</span>
+                  <input id="aporte-valor-${instr.id}" class="inv-instr-input" style="width:90px;" type="number" step="0.01" min="0" placeholder="150"
+                    onkeydown="if(event.key==='Enter')invUI.addAporte('${conta.id}','${instr.id}')"/>
+                </div>
+                <button class="btn btn-accent" style="font-size:12px;padding:6px 12px;" onclick="invUI.addAporte('${conta.id}','${instr.id}')">+ Registar</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('')
       : `<div style="font-size:12px;color:var(--muted);padding:8px 6px;font-family:'DM Mono',monospace;font-style:italic;">Sem instrumentos — adiciona abaixo</div>`;
 
     return `
@@ -1075,6 +1184,54 @@ const invUI = {
     if (editingInstrId === instrId) editingInstrId = null;
     saveState();
     render();
+  },
+
+  toggleAportes(instrId) {
+    const panel = document.getElementById('aportes-panel-' + instrId);
+    if (!panel) return;
+    const isOpen = panel.classList.contains('open');
+    document.querySelectorAll('.inv-aportes-panel').forEach(p => p.classList.remove('open'));
+    if (!isOpen) panel.classList.add('open');
+  },
+
+  addAporte(contaId, instrId) {
+    const conta = state.contas.find(c => c.id === contaId);
+    if (!conta) return;
+    const instr = conta.instrumentos.find(i => i.id === instrId);
+    if (!instr) return;
+
+    const mesEl   = document.getElementById('aporte-mes-' + instrId);
+    const valorEl = document.getElementById('aporte-valor-' + instrId);
+    const mes   = mesEl.value;
+    const valor = parseFloat(valorEl.value);
+
+    if (!mes) { mesEl.focus(); return; }
+    if (isNaN(valor) || valor <= 0) { valorEl.focus(); return; }
+
+    if (!Array.isArray(instr.aportes)) instr.aportes = [];
+    instr.aportes.push({ id: uid(), data: mes, valor });
+    saveState();
+    render();
+
+    // Reabrir o painel de aportes deste instrumento para continuar a registar
+    setTimeout(() => {
+      const panel = document.getElementById('aportes-panel-' + instrId);
+      if (panel) panel.classList.add('open');
+    }, 30);
+  },
+
+  deleteAporte(contaId, instrId, aporteId) {
+    const conta = state.contas.find(c => c.id === contaId);
+    if (!conta) return;
+    const instr = conta.instrumentos.find(i => i.id === instrId);
+    if (!instr) return;
+    instr.aportes = (instr.aportes || []).filter(a => a.id !== aporteId);
+    saveState();
+    render();
+    setTimeout(() => {
+      const panel = document.getElementById('aportes-panel-' + instrId);
+      if (panel) panel.classList.add('open');
+    }, 30);
   }
 };
 
