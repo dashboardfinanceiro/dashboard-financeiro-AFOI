@@ -512,12 +512,14 @@ function loadState() {
 function normalizeState() {
   if (!Array.isArray(state.contas)) state.contas = [];
   if (!state.perfilObjetivo || !PERFIS_RISCO[state.perfilObjetivo]) state.perfilObjetivo = 'Moderado';
+  if (typeof state._modifiedAt !== 'number') state._modifiedAt = 0; // dados antigos sem timestamp = mais velhos que tudo
   state.contas.forEach(c => c.instrumentos.forEach(i => {
     if (!i.risco || !RISCO_NIVEIS.includes(i.risco)) i.risco = TIPO_RISCO_DEFAULT[i.tipo] || 'Médio';
   }));
 }
 
 function saveState() {
+  state._modifiedAt = Date.now();
   localStorage.setItem(INV_KEY, JSON.stringify(state));
   // Drive sync se disponível
   scheduleDriveSync();
@@ -594,10 +596,22 @@ async function driveLoad() {
     );
     const remote = await res.json();
     if (remote && Array.isArray(remote.contas)) {
-      state = remote;
-      normalizeState();
-      localStorage.setItem(INV_KEY, JSON.stringify(state));
-      render();
+      const remoteModifiedAt = typeof remote._modifiedAt === 'number' ? remote._modifiedAt : 0;
+      const localModifiedAt  = typeof state._modifiedAt   === 'number' ? state._modifiedAt   : 0;
+
+      if (remoteModifiedAt >= localModifiedAt) {
+        // Drive tem a versão mais recente (ou igual) — usa-a
+        state = remote;
+        normalizeState();
+        localStorage.setItem(INV_KEY, JSON.stringify(state));
+        render();
+      } else {
+        // O estado local é mais recente do que o que está no Drive
+        // (ex: editaste offline ou noutro separador antes deste carregar) — mantém o local
+        // e sobe-o para o Drive para os dois ficarem alinhados.
+        console.info('investimentos: estado local mais recente que o Drive, a manter local e a sincronizar.');
+        driveSave();
+      }
     }
   } catch(e) { /* se Drive falha, usa localStorage */ }
 }
