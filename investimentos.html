@@ -658,7 +658,7 @@ async function driveSave() {
 
 async function driveLoad() {
   const token = getDriveToken();
-  if (!token) return;
+  if (!token) { showSyncError('Sem sessão Google ativa neste browser — a app não conseguiu ler o Drive.'); return; }
   try {
     const search = await fetch(
       `https://www.googleapis.com/drive/v3/files?q=name%3D'df_investimentos.json'+and+trashed%3Dfalse&spaces=appDataFolder`,
