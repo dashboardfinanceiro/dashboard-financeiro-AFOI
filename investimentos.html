@@ -409,9 +409,9 @@ header h1 { font-size: 1.25rem !important; letter-spacing: 0.02em; }
       <div class="kpi-sub" id="kpiTopContaPct">—</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Total Aportado</div>
+      <div class="kpi-label">Dinheiro Investido</div>
       <div class="kpi-val neu" id="kpiAportado">0,00 €</div>
-      <div class="kpi-sub">soma de todos os aportes</div>
+      <div class="kpi-sub">soma de tudo o que investiste</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Ganho / Perda</div>
@@ -561,6 +561,7 @@ function normalizeState() {
   state.contas.forEach(c => c.instrumentos.forEach(i => {
     if (!i.risco || !RISCO_NIVEIS.includes(i.risco)) i.risco = TIPO_RISCO_DEFAULT[i.tipo] || 'Médio';
     if (!Array.isArray(i.aportes)) i.aportes = [];
+    if (!Array.isArray(i.historicoValor)) i.historicoValor = [];
   }));
 }
 
@@ -735,11 +736,11 @@ function renderKPIs() {
     const ganhoPct = (ganho / aportado * 100);
     ganhoEl.textContent = (ganho >= 0 ? '+' : '') + fmt(ganho);
     ganhoEl.className = 'kpi-val ' + (ganho >= 0 ? 'pos' : 'neg');
-    ganhoPctEl.textContent = (ganhoPct >= 0 ? '+' : '') + ganhoPct.toFixed(1) + '% face ao aportado';
+    ganhoPctEl.textContent = (ganhoPct >= 0 ? '+' : '') + ganhoPct.toFixed(1) + '% face ao investido';
   } else {
     ganhoEl.textContent = '—';
     ganhoEl.className = 'kpi-val neu';
-    ganhoPctEl.textContent = 'regista aportes para calcular';
+    ganhoPctEl.textContent = 'regista dinheiro investido para calcular';
   }
 }
 
@@ -765,6 +766,8 @@ function renderContas() {
           const aportado = totalAportadoInstr(instr);
           const aportes = (instr.aportes || []).slice().sort((a, b) => b.data.localeCompare(a.data));
           const nAportes = aportes.length;
+          const valorizacoes = (instr.historicoValor || []).slice().sort((a, b) => b.data.localeCompare(a.data));
+          const nValorizacoes = valorizacoes.length;
           return `
           <div class="inv-instrumento-row" id="instr-row-${instr.id}">
             <div class="inv-instr-line1">
@@ -778,7 +781,10 @@ function renderContas() {
               <span class="inv-instr-tipo-badge" style="background:${(ASSET_TIPO_CORES[instr.tipo]||'#8a8680')}22;color:${ASSET_TIPO_CORES[instr.tipo]||'#8a8680'};">${escHTML(instr.tipo || 'Outro')}</span>
               <span class="inv-instr-risco-badge" style="background:${(RISCO_CORES[instr.risco]||'#8a8680')}22;color:${RISCO_CORES[instr.risco]||'#8a8680'};" title="Nível de risco">${escHTML(instr.risco || 'Médio')}</span>
               <button class="inv-aportes-toggle" onclick="invUI.toggleAportes('${instr.id}')">
-                📅 aportes${nAportes ? ' (' + nAportes + ')' : ''}${aportado > 0 ? ' · ' + fmt(aportado) + ' aportado' : ''}
+                📅 dinheiro investido${nAportes ? ' (' + nAportes + ')' : ''}${aportado > 0 ? ' · ' + fmt(aportado) : ''}
+              </button>
+              <button class="inv-aportes-toggle" onclick="invUI.toggleValorizacoes('${instr.id}')">
+                📉 valor atual${nValorizacoes ? ' (' + nValorizacoes + ')' : ''}
               </button>
             </div>
             <div class="inv-aportes-panel" id="aportes-panel-${instr.id}">
@@ -788,7 +794,7 @@ function renderContas() {
                   <span class="inv-aporte-valor">${fmt(parseFloat(a.valor)||0)}</span>
                   <button class="inv-instr-delete" style="opacity:1;" onclick="invUI.deleteAporte('${conta.id}','${instr.id}','${a.id}')" title="Remover aporte">×</button>
                 </div>`).join('')
-                : `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:4px 0;">Ainda sem aportes registados.</div>`}
+                : `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:4px 0;">Ainda sem valores registados.</div>`}
               <div class="inv-instr-form-row" style="margin-top:6px;">
                 <div class="inv-instr-field">
                   <span class="inv-instr-label">Mês</span>
@@ -801,6 +807,28 @@ function renderContas() {
                     onkeydown="if(event.key==='Enter')invUI.addAporte('${conta.id}','${instr.id}')"/>
                 </div>
                 <button class="btn btn-accent" style="font-size:12px;padding:6px 12px;" onclick="invUI.addAporte('${conta.id}','${instr.id}')">+ Registar</button>
+              </div>
+            </div>
+            <div class="inv-aportes-panel" id="valorizacoes-panel-${instr.id}">
+              ${valorizacoes.length ? valorizacoes.map(v => `
+                <div class="inv-aporte-row">
+                  <span class="inv-aporte-data">${mesLabel(v.data)}</span>
+                  <span class="inv-aporte-valor">${fmt(parseFloat(v.valor)||0)}</span>
+                  <button class="inv-instr-delete" style="opacity:1;" onclick="invUI.deleteValorizacao('${conta.id}','${instr.id}','${v.id}')" title="Remover valorização">×</button>
+                </div>`).join('')
+                : `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:4px 0;">Ainda sem atualizações de valor registadas.</div>`}
+              <div class="inv-instr-form-row" style="margin-top:6px;">
+                <div class="inv-instr-field">
+                  <span class="inv-instr-label">Mês</span>
+                  <input id="valorizacao-mes-${instr.id}" class="inv-instr-input" style="width:130px;" type="month"
+                    value="${new Date().toISOString().slice(0,7)}"/>
+                </div>
+                <div class="inv-instr-field">
+                  <span class="inv-instr-label">Valor atual (€)</span>
+                  <input id="valorizacao-valor-${instr.id}" class="inv-instr-input" style="width:90px;" type="number" step="0.01" min="0" placeholder="1240"
+                    onkeydown="if(event.key==='Enter')invUI.addValorizacao('${conta.id}','${instr.id}')"/>
+                </div>
+                <button class="btn btn-accent" style="font-size:12px;padding:6px 12px;" onclick="invUI.addValorizacao('${conta.id}','${instr.id}')">+ Atualizar</button>
               </div>
             </div>
           </div>`;
@@ -1230,6 +1258,59 @@ const invUI = {
     render();
     setTimeout(() => {
       const panel = document.getElementById('aportes-panel-' + instrId);
+      if (panel) panel.classList.add('open');
+    }, 30);
+  },
+
+  toggleValorizacoes(instrId) {
+    const panel = document.getElementById('valorizacoes-panel-' + instrId);
+    if (!panel) return;
+    const isOpen = panel.classList.contains('open');
+    document.querySelectorAll('.inv-aportes-panel').forEach(p => p.classList.remove('open'));
+    if (!isOpen) panel.classList.add('open');
+  },
+
+  addValorizacao(contaId, instrId) {
+    const conta = state.contas.find(c => c.id === contaId);
+    if (!conta) return;
+    const instr = conta.instrumentos.find(i => i.id === instrId);
+    if (!instr) return;
+
+    const mesEl   = document.getElementById('valorizacao-mes-' + instrId);
+    const valorEl = document.getElementById('valorizacao-valor-' + instrId);
+    const mes   = mesEl.value;
+    const valor = parseFloat(valorEl.value);
+
+    if (!mes) { mesEl.focus(); return; }
+    if (isNaN(valor) || valor < 0) { valorEl.focus(); return; }
+
+    if (!Array.isArray(instr.historicoValor)) instr.historicoValor = [];
+    instr.historicoValor.push({ id: uid(), data: mes, valor });
+    instr.valor = valor; // o valor atual do instrumento passa a ser este
+    saveState();
+    render();
+
+    setTimeout(() => {
+      const panel = document.getElementById('valorizacoes-panel-' + instrId);
+      if (panel) panel.classList.add('open');
+    }, 30);
+  },
+
+  deleteValorizacao(contaId, instrId, valorizacaoId) {
+    const conta = state.contas.find(c => c.id === contaId);
+    if (!conta) return;
+    const instr = conta.instrumentos.find(i => i.id === instrId);
+    if (!instr) return;
+    instr.historicoValor = (instr.historicoValor || []).filter(v => v.id !== valorizacaoId);
+    // Se ainda houver valorizações, o valor atual passa a ser a mais recente
+    if (instr.historicoValor.length) {
+      const maisRecente = instr.historicoValor.slice().sort((a, b) => b.data.localeCompare(a.data))[0];
+      instr.valor = parseFloat(maisRecente.valor) || 0;
+    }
+    saveState();
+    render();
+    setTimeout(() => {
+      const panel = document.getElementById('valorizacoes-panel-' + instrId);
       if (panel) panel.classList.add('open');
     }, 30);
   }
