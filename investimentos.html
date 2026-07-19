@@ -186,7 +186,7 @@
 }
 .inv-aporte-data {
   font-family: 'DM Mono', monospace; color: var(--muted);
-  min-width: 62px;
+  min-width: 88px;
 }
 .inv-aporte-valor {
   font-family: 'DM Mono', monospace; font-weight: 500;
@@ -562,6 +562,12 @@ function normalizeState() {
     if (!i.risco || !RISCO_NIVEIS.includes(i.risco)) i.risco = TIPO_RISCO_DEFAULT[i.tipo] || 'Médio';
     if (!Array.isArray(i.aportes)) i.aportes = [];
     if (!Array.isArray(i.historicoValor)) i.historicoValor = [];
+    // Corrige instrumentos que já têm dinheiro investido registado mas nunca
+    // tiveram uma atualização manual de valor atual — o valor atual segue o investido.
+    if (!i.historicoValor.length && i.aportes.length) {
+      const totalInvestido = i.aportes.reduce((s, a) => s + (parseFloat(a.valor) || 0), 0);
+      if ((parseFloat(i.valor) || 0) !== totalInvestido) i.valor = totalInvestido;
+    }
   }));
 }
 
@@ -680,12 +686,20 @@ function totalAportadoGeral() {
   return state.contas.reduce((s, c) => s + c.instrumentos.reduce((s2, i) => s2 + totalAportadoInstr(i), 0), 0);
 }
 
-function mesLabel(ym) {
-  // ym no formato 'YYYY-MM'
-  if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return ym || '';
-  const [y, m] = ym.split('-');
+function mesLabel(d) {
   const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  return nomes[parseInt(m, 10) - 1] + ' ' + y;
+  if (!d) return '';
+  // Data completa 'YYYY-MM-DD' (formato atual)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+    const [y, m, dia] = d.split('-');
+    return dia + ' ' + nomes[parseInt(m, 10) - 1] + ' ' + y;
+  }
+  // Entradas antigas só com mês 'YYYY-MM' (registadas antes desta atualização)
+  if (/^\d{4}-\d{2}$/.test(d)) {
+    const [y, m] = d.split('-');
+    return nomes[parseInt(m, 10) - 1] + ' ' + y;
+  }
+  return d;
 }
 
 function fmt(n) {
@@ -797,9 +811,9 @@ function renderContas() {
                 : `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:4px 0;">Ainda sem valores registados.</div>`}
               <div class="inv-instr-form-row" style="margin-top:6px;">
                 <div class="inv-instr-field">
-                  <span class="inv-instr-label">Mês</span>
-                  <input id="aporte-mes-${instr.id}" class="inv-instr-input" style="width:130px;" type="month"
-                    value="${new Date().toISOString().slice(0,7)}"/>
+                  <span class="inv-instr-label">Data</span>
+                  <input id="aporte-mes-${instr.id}" class="inv-instr-input" style="width:150px;" type="date"
+                    value="${new Date().toISOString().slice(0,10)}"/>
                 </div>
                 <div class="inv-instr-field">
                   <span class="inv-instr-label">Valor (€)</span>
@@ -819,9 +833,9 @@ function renderContas() {
                 : `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:4px 0;">Ainda sem atualizações de valor registadas.</div>`}
               <div class="inv-instr-form-row" style="margin-top:6px;">
                 <div class="inv-instr-field">
-                  <span class="inv-instr-label">Mês</span>
-                  <input id="valorizacao-mes-${instr.id}" class="inv-instr-input" style="width:130px;" type="month"
-                    value="${new Date().toISOString().slice(0,7)}"/>
+                  <span class="inv-instr-label">Data</span>
+                  <input id="valorizacao-mes-${instr.id}" class="inv-instr-input" style="width:150px;" type="date"
+                    value="${new Date().toISOString().slice(0,10)}"/>
                 </div>
                 <div class="inv-instr-field">
                   <span class="inv-instr-label">Valor atual (€)</span>
@@ -1238,6 +1252,13 @@ const invUI = {
 
     if (!Array.isArray(instr.aportes)) instr.aportes = [];
     instr.aportes.push({ id: uid(), data: mes, valor });
+
+    // Enquanto ainda não houver nenhuma atualização manual de "valor atual",
+    // assumimos que o valor atual = total investido (melhor estimativa disponível).
+    if (!instr.historicoValor || !instr.historicoValor.length) {
+      instr.valor = totalAportadoInstr(instr);
+    }
+
     saveState();
     render();
 
@@ -1254,6 +1275,12 @@ const invUI = {
     const instr = conta.instrumentos.find(i => i.id === instrId);
     if (!instr) return;
     instr.aportes = (instr.aportes || []).filter(a => a.id !== aporteId);
+
+    // O mesmo ajuste automático aplica-se ao remover um aporte
+    if (!instr.historicoValor || !instr.historicoValor.length) {
+      instr.valor = totalAportadoInstr(instr);
+    }
+
     saveState();
     render();
     setTimeout(() => {
