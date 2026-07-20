@@ -681,7 +681,13 @@ async function driveLoad() {
       const remoteModifiedAt = typeof remote._modifiedAt === 'number' ? remote._modifiedAt : 0;
       const localModifiedAt  = typeof state._modifiedAt   === 'number' ? state._modifiedAt   : 0;
 
-      if (remoteModifiedAt >= localModifiedAt) {
+      // Estado local sem nenhuma conta mas o Drive tem dados: usa sempre o Drive.
+      // Isto evita que uma interação trivial (ex: mudar o perfil de risco sem
+      // teres nenhuma conta ainda) "envelheça" um estado vazio e o faça parecer
+      // mais recente do que um backup real que já existe no Drive.
+      const localEstaVazio = !state.contas.length && remote.contas && remote.contas.length;
+
+      if (localEstaVazio || remoteModifiedAt >= localModifiedAt) {
         // Drive tem a versão mais recente (ou igual) — usa-a
         state = remote;
         normalizeState();
@@ -1491,6 +1497,29 @@ loadState();
 render();
 // Tentar carregar do Drive (assíncrono, silencioso)
 driveLoad();
+
+// ─── Re-sincronização automática ───────────────────────────────────────────────
+// O driveLoad() acima só corre uma vez, no arranque. Se nesse momento ainda não
+// havia sessão Google ativa (ex: login feito depois, ou feito noutra aba), estes
+// listeners voltam a tentar sozinhos, sem precisar de F5 manual.
+
+// 1) Login feito noutra aba/página da mesma origem (ex: index.html) —
+//    o browser dispara este evento quando o localStorage muda noutra aba.
+window.addEventListener('storage', (e) => {
+  if (e.key === 'df_gtoken' && e.newValue) driveLoad();
+});
+
+// 2) Voltar a esta aba depois de teres estado noutra (ex: fizeste login e voltaste) —
+//    cobre o caso de teres navegado dentro da mesma aba e voltado com o botão "atrás".
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') driveLoad();
+});
+
+// 3) Página restaurada da cache do browser (bfcache) ao navegar com "atrás"/"avançar" —
+//    nesse caso os scripts não voltam a correr do zero, por isso forçamos aqui.
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) driveLoad();
+});
 </script>
 </body>
 </html>
